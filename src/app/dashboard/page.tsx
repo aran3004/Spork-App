@@ -43,7 +43,7 @@ const mockData = {
   }
 };
 
-const chartData = {
+const calorieData = {
   labels: mockData.weeklyCalories.map(d => d.day),
   datasets: [
     {
@@ -121,7 +121,7 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="h-[300px]">
-            <Line data={chartData} options={chartOptions} />
+            <Line data={calorieData} options={chartOptions} />
           </div>
         </CardContent>
       </Card>
