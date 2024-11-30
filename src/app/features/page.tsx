@@ -2,6 +2,7 @@
 
 import { Camera, Brain, ChefHat, Heart, TrendingUp, Scale, Users } from 'lucide-react'
 import { useState } from 'react'
+import Image from 'next/image'
 
 interface FeatureTab {
   id: string;
@@ -131,11 +132,13 @@ export default function FeaturesPage() {
                 </ul>
               </div>
               <div className="relative">
-                <img
-                  src={feature.image}
-                  alt={feature.title}
-                  className="rounded-xl shadow-lg"
-                />
+              <Image
+                src={feature.image}
+                alt={feature.title}
+                width={600}
+                height={400}
+                className="rounded-xl shadow-lg"
+              />
                 <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-blue-500 rounded-2xl opacity-10 blur-2xl"></div>
               </div>
             </div>

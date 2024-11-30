@@ -25,7 +25,7 @@ export function Testimonials(): JSX.Element {
     {
       name: "Lisa M.",
       role: "Health Coach",
-      content: "I recommend Nosh to all my clients. It's like having a nutritionist in your pocket.",
+      content: "I recommend Nosh to all my clients. It&quot;s like having a nutritionist in your pocket.",
       rating: 5
     }
   ]
