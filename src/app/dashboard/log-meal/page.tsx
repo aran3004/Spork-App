@@ -24,14 +24,13 @@ interface MealAnalysis {
         carbs: string;
         fats: string;
       };
-      allergenWarnings: string[];
     };
     metadata: {
       analysisVersion: string;
       modelUsed: string;
       timestamp: string;
     };
-  }
+}
 
 export default function LogMealPage() {
   const [mealName, setMealName] = useState('');
@@ -243,18 +242,6 @@ export default function LogMealPage() {
                         </div>
                     </div>
                     </div>
-
-                    {/* Allergen Warnings */}
-                    {analysis.analysis.allergenWarnings.length > 0 && (
-                    <div className="bg-red-50 p-4 rounded-lg">
-                        <h3 className="font-medium text-lg text-red-800 mb-2">Allergen Warnings</h3>
-                        <ul className="list-disc list-inside space-y-1">
-                        {analysis.analysis.allergenWarnings.map((warning, index) => (
-                            <li key={index} className="text-red-600">{warning}</li>
-                        ))}
-                        </ul>
-                    </div>
-                    )}
                     
                     {/* Improvements */}
                     <div>
