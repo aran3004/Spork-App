@@ -1,5 +1,4 @@
 // src/components/LandingPage/components/Hero.tsx
-import { Users, Star, ChartBar } from 'lucide-react'
 
 export function Hero(): JSX.Element {
   return (

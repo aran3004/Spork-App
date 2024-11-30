@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, Goal, Scale, Trophy } from 'lucide-react';
+import { Goal, Scale, Trophy } from 'lucide-react';
 
 const mockData = {
   weeklyProgress: {

@@ -1,6 +1,6 @@
 'use client'
 
-import { Camera, Brain, ChefHat, Sparkles, Heart, TrendingUp, Scale, Users } from 'lucide-react'
+import { Camera, Brain, ChefHat, Heart, TrendingUp, Scale, Users } from 'lucide-react'
 import { useState } from 'react'
 
 interface FeatureTab {
