@@ -2,8 +2,28 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Line } from 'react-chartjs-2';
 import { Utensils, Target, TrendingUp, Calendar } from 'lucide-react';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const mockData = {
   weeklyCalories: [
@@ -20,6 +40,29 @@ const mockData = {
     mealsLogged: '21',
     streakDays: '5',
     nextMeal: 'Lunch in 2h'
+  }
+};
+
+const chartData = {
+  labels: mockData.weeklyCalories.map(d => d.day),
+  datasets: [
+    {
+      label: 'Calories',
+      data: mockData.weeklyCalories.map(d => d.calories),
+      borderColor: '#3b82f6',
+      backgroundColor: '#3b82f6',
+      tension: 0.1
+    }
+  ]
+};
+
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      display: false
+    }
   }
 };
 
@@ -78,21 +121,7 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={mockData.weeklyCalories}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="day" />
-                <YAxis />
-                <Tooltip />
-                <Line 
-                  type="monotone" 
-                  dataKey="calories" 
-                  stroke="#3b82f6" 
-                  strokeWidth={2}
-                  dot={{ fill: '#3b82f6' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <Line data={chartData} options={chartOptions} />
           </div>
         </CardContent>
       </Card>
