@@ -1,10 +1,12 @@
 'use client'
-import { Utensils } from 'lucide-react'
+import { useState } from 'react'
+import { Utensils, X, Menu } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 
 export function Navbar() {
+  const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const { user, signOut } = useAuth()
@@ -12,70 +14,115 @@ export function Navbar() {
   const handleSignOut = async () => {
     await signOut()
     router.push('/')
+    setIsOpen(false)
   }
 
+  const closeMenu = () => {
+    setIsOpen(false)
+  }
+
+  const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <Link 
+      href={href}
+      onClick={closeMenu} 
+      className={`text-gray-600 hover:text-gray-900 transition ${
+        pathname === href ? 'text-gray-900 font-medium' : ''
+      }`}
+    >
+      {children}
+    </Link>
+  )
+
   return (
-    <nav className="fixed w-full bg-white/80 backdrop-blur-md z-50 transition-all duration-300">
-      <div className="container mx-auto p-4 flex justify-between items-center">
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center transform -rotate-12">
-            <Utensils className="h-6 w-6 text-white" />
+    <nav className="fixed w-full bg-white/80 backdrop-blur-md z-50 transition-all duration-300 border-b border-gray-100">
+      <div className="container mx-auto p-4">
+        <div className="flex justify-between items-center">
+          {/* Logo */}
+          <Link href="/" className="flex items-center space-x-2">
+            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center transform -rotate-12">
+              <Utensils className="h-6 w-6 text-white" />
+            </div>
+            <span className="text-2xl font-bold text-gray-900">nosh</span>
+          </Link>
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-8">
+            <NavLink href="/features">Features</NavLink>
+            <NavLink href="/pricing">Pricing</NavLink>
+            <NavLink href="/about">About</NavLink>
+            
+            {!user ? (
+              <>
+                <NavLink href="/auth/sign-in">Sign in</NavLink>
+                <Link 
+                  href="/auth/sign-up" 
+                  className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-300"
+                >
+                  Get Started
+                </Link>
+              </>
+            ) : (
+              <button 
+                onClick={handleSignOut}
+                className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-300"
+              >
+                Logout
+              </button>
+            )}
           </div>
-          <span className="text-2xl font-bold text-gray-900">nosh</span>
-        </Link>
 
-        <div className="hidden md:flex space-x-8">
-          <Link 
-            href="/features" 
-            className={`text-gray-600 hover:text-gray-900 transition ${
-              pathname === '/features' ? 'text-gray-900' : ''
-            }`}
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="md:hidden p-2 text-gray-600 hover:text-gray-900"
+            aria-label="Toggle menu"
           >
-            Features
-          </Link>
-          <Link 
-            href="/pricing" 
-            className={`text-gray-600 hover:text-gray-900 transition ${
-              pathname === '/pricing' ? 'text-gray-900' : ''
-            }`}
-          >
-            Pricing
-          </Link>
-          <Link 
-            href="/about" 
-            className={`text-gray-600 hover:text-gray-900 transition ${
-              pathname === '/about' ? 'text-gray-900' : ''
-            }`}
-          >
-            About
-          </Link>
+            {isOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
+          </button>
         </div>
 
-        <div className="flex items-center space-x-4">
-          {!user ? (
-            <>
-              <Link 
-                href="/auth/sign-in" 
-                className="hidden md:block px-4 py-2 text-gray-600 hover:text-gray-900 transition"
-              >
-                Sign in
-              </Link>
-              <Link 
-                href="/auth/sign-up" 
-                className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-300"
-              >
-                Get Started
-              </Link>
-            </>
-          ) : (
-            <button 
-              onClick={handleSignOut}
-              className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-300"
-            >
-              Logout
-            </button>
-          )}
-        </div>
+        {/* Mobile Menu */}
+        {isOpen && (
+          <div className="md:hidden absolute left-0 right-0 top-[73px] bg-white border-b border-gray-100 shadow-lg">
+            <div className="container mx-auto py-4 px-4 flex flex-col space-y-4">
+              <NavLink href="/features">Features</NavLink>
+              <NavLink href="/pricing">Pricing</NavLink>
+              <NavLink href="/about">About</NavLink>
+              
+              {!user ? (
+                <div className="flex flex-col space-y-4 pt-4 border-t border-gray-100">
+                  <Link 
+                    href="/auth/sign-in" 
+                    onClick={closeMenu}
+                    className="text-gray-600 hover:text-gray-900 transition"
+                  >
+                    Sign in
+                  </Link>
+                  <Link 
+                    href="/auth/sign-up" 
+                    onClick={closeMenu}
+                    className="w-full py-3 bg-blue-500 text-white text-center rounded-lg hover:bg-blue-600 transition duration-300"
+                  >
+                    Get Started
+                  </Link>
+                </div>
+              ) : (
+                <div className="pt-4 border-t border-gray-100">
+                  <button 
+                    onClick={handleSignOut}
+                    className="w-full py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-300"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   )
