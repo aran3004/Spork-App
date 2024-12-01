@@ -123,19 +123,21 @@ export default function DashboardPage() {
 
         // Get streak (consecutive days with logged meals)
         let streakDays = 0;
-        let currentDate = new Date();
         let consecutiveDays = 0;
 
+        const startDate = new Date();
         while (consecutiveDays < 7) {
+          const currentDate = new Date(startDate); // Create new date object for each iteration
+          currentDate.setDate(currentDate.getDate() - consecutiveDays);
+          
           const dayMeals = mealsData?.filter(meal => {
             const mealDate = new Date(meal.created_at);
             return mealDate.toDateString() === currentDate.toDateString();
           });
-
+        
           if (dayMeals?.length === 0) break;
           streakDays++;
           consecutiveDays++;
-          currentDate.setDate(currentDate.getDate() - 1);
         }
 
         setStats({
