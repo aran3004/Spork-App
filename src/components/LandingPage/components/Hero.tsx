@@ -15,15 +15,16 @@ export function Hero(): JSX.Element {
 
     const fetchMealCount = async () => {
       try {
-        const { count, error } = await supabase
-          .from('meals')
-          .select('*', { count: 'exact', head: true });
+        // Use a database function to get total meal count
+        const { data, error } = await supabase
+          .rpc('get_total_meal_count');
 
         if (error) {
           console.error('Meal Count Error:', error);
-        } else {
-          setMealCount(count || 0);
+          return;
         }
+        
+        setMealCount(data || 0);
       } catch (error) {
         console.error('Unexpected error fetching meal count:', error);
       }
@@ -31,7 +32,6 @@ export function Hero(): JSX.Element {
 
     const fetchUserCount = async () => {
       try {
-        // Try the RPC method first
         console.log('Attempting to fetch user count via RPC...');
         const { data: rpcData, error: rpcError } = await supabase
           .rpc('get_user_count');
@@ -39,7 +39,6 @@ export function Hero(): JSX.Element {
         if (rpcError) {
           console.error('RPC Error:', rpcError);
           
-          // Fallback to querying auth.users directly
           console.log('Attempting to fetch from auth.users...');
           const { count, error: authError } = await supabase
             .from('users')
