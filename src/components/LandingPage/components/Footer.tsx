@@ -8,7 +8,7 @@ export function Footer(): JSX.Element {
     product: [
       { name: 'Features', href: '/features' },
       { name: 'Pricing', href: '/pricing' },
-      { name: 'FAQ', href: '/faq' }
+      { name: 'FAQ', href: '/pricing#faq' }
     ],
     company: [
       { name: 'About', href: '/about' },

@@ -168,24 +168,24 @@ export default function LogMealPage() {
     newIngredients[index] = { ...newIngredients[index], [field]: value };
     setIngredients(newIngredients);
   };
-
+  
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Log a Meal</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Log a Meal</h1>
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg">
+        <div className="bg-red-50 text-red-600 p-3 sm:p-4 rounded-lg text-sm sm:text-base">
           {error}
         </div>
       )}
 
-      <div className="grid gap-6">
+      <div className="grid gap-4 sm:gap-6">
         {/* Meal Details Section */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
           <div className="flex flex-row items-center justify-between pb-2">
-            <h2 className="text-xl font-semibold">Meal Details</h2>
+            <h2 className="text-lg sm:text-xl font-semibold">Meal Details</h2>
             <UtensilsCrossed className="h-5 w-5 text-blue-500" />
           </div>
           <div className="mt-4">
@@ -194,86 +194,91 @@ export default function LogMealPage() {
               placeholder="Meal Name"
               value={mealName}
               onChange={(e) => setMealName(e.target.value)}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-lg"
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base sm:text-lg"
             />
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex flex-row items-center justify-between">
-            <h2 className="text-xl font-semibold">Ingredients</h2>
+        {/* Ingredients Section */}
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
+            <h2 className="text-lg sm:text-xl font-semibold">Ingredients</h2>
             <button
               onClick={addIngredient}
-              className="flex items-center gap-2 text-blue-500 hover:text-blue-600"
+              className="flex items-center gap-2 text-blue-500 hover:text-blue-600 text-sm sm:text-base"
             >
-              <Plus className="h-5 w-5" /> Add Ingredient
+              <Plus className="h-4 w-4 sm:h-5 sm:w-5" /> Add Ingredient
             </button>
           </div>
           <div className="mt-4 space-y-4">
             {ingredients.map((ingredient, index) => (
-              <div key={index} className="flex gap-4 items-center">
+              <div key={index} className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center">
                 <input
                   type="text"
                   placeholder="Ingredient name"
                   value={ingredient.name}
                   onChange={(e) => updateIngredient(index, 'name', e.target.value)}
-                  className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full sm:flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm sm:text-base"
                 />
-                <input
-                  type="number"
-                  placeholder="Weight"
-                  value={ingredient.weight}
-                  onChange={(e) => updateIngredient(index, 'weight', e.target.value)}
-                  className="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                />
-                <select
-                  value={ingredient.unit}
-                  onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
-                  className="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                >
-                  <option value="g">grams</option>
-                  <option value="oz">ounces</option>
-                  <option value="ml">milliliters</option>
-                  <option value="cups">cups</option>
-                </select>
-                {ingredients.length > 1 && (
-                  <button
-                    onClick={() => removeIngredient(index)}
-                    className="text-red-500 hover:text-red-700"
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <input
+                    type="number"
+                    placeholder="Weight"
+                    value={ingredient.weight}
+                    onChange={(e) => updateIngredient(index, 'weight', e.target.value)}
+                    className="flex-1 sm:w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm sm:text-base"
+                  />
+                  <select
+                    value={ingredient.unit}
+                    onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
+                    className="flex-1 sm:w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm sm:text-base"
                   >
-                    <Trash2 className="h-5 w-5" />
-                  </button>
-                )}
+                    <option value="g">grams</option>
+                    <option value="oz">ounces</option>
+                    <option value="ml">milliliters</option>
+                    <option value="cups">cups</option>
+                  </select>
+                  {ingredients.length > 1 && (
+                    <button
+                      onClick={() => removeIngredient(index)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold">Cooking Instructions</h2>
+        {/* Instructions Section */}
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-semibold">Cooking Instructions</h2>
           <div className="mt-4">
             <textarea
               placeholder="Optional cooking instructions..."
               rows={4}
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm sm:text-base"
             />
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex flex-row items-center justify-between pb-4">
-            <h2 className="text-xl font-semibold">AI Analysis</h2>
+        {/* Analysis Section */}
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 gap-3 sm:gap-0">
+            <h2 className="text-lg sm:text-xl font-semibold">AI Analysis</h2>
             {!analysis && (
               <button 
-                className={`bg-green-500 text-white px-6 py-2 rounded-lg flex items-center gap-2 hover:bg-green-600
+                className={`w-full sm:w-auto bg-green-500 text-white px-4 sm:px-6 py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-green-600 text-sm sm:text-base
                   ${isAnalysing || !mealName || ingredients[0].name === '' ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onClick={analyseMeal}
                 disabled={isAnalysing || !mealName || ingredients[0].name === ''}
               >
                 {isAnalysing ? (
-                  <><Loader2 className="h-5 w-5 animate-spin" /> Analysing...</>
+                  <><Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> Analysing...</>
                 ) : (
                   'Analyse Meal'
                 )}
@@ -282,51 +287,53 @@ export default function LogMealPage() {
           </div>
 
           {analysis && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Health Score */}
-              <div className="flex items-center gap-4">
-                <div className="bg-blue-50 rounded-full p-6 h-24 w-24 flex items-center justify-center">
-                  <span className="text-3xl font-bold text-blue-600">{analysis.score}</span>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="bg-blue-50 rounded-full p-4 sm:p-6 h-20 w-20 sm:h-24 sm:w-24 flex items-center justify-center">
+                  <span className="text-2xl sm:text-3xl font-bold text-blue-600">{analysis.score}</span>
                 </div>
                 <div>
-                  <h3 className="font-medium text-lg">Health Score</h3>
-                  <p className="text-gray-600 text-sm">Out of 100 possible points</p>
+                  <h3 className="font-medium text-base sm:text-lg">Health Score</h3>
+                  <p className="text-gray-600 text-xs sm:text-sm">Out of 100 possible points</p>
                 </div>
               </div>
 
+              {/* Nutritional Overview */}
               <div>
-                <h3 className="font-medium text-lg mb-2">Nutritional Overview</h3>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-4">
-                  <p className="text-gray-700">{analysis.analysis.nutritionalValue}</p>
-                  <p className="text-gray-700">{analysis.analysis.calorieEstimate}</p>
+                <h3 className="font-medium text-base sm:text-lg mb-2">Nutritional Overview</h3>
+                <div className="bg-gray-50 rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4">
+                  <p className="text-gray-700 text-sm sm:text-base">{analysis.analysis.nutritionalValue}</p>
+                  <p className="text-gray-700 text-sm sm:text-base">{analysis.analysis.calorieEstimate}</p>
                   
-                  <div className="grid grid-cols-3 gap-4 mt-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4">
                     <div className="bg-blue-50 p-3 rounded-lg">
-                      <h4 className="font-medium text-sm text-blue-800">Proteins</h4>
-                      <p className="text-blue-600">{analysis.analysis.macroBreakdown.proteins}</p>
+                      <h4 className="font-medium text-xs sm:text-sm text-blue-800">Proteins</h4>
+                      <p className="text-blue-600 text-sm sm:text-base">{analysis.analysis.macroBreakdown.proteins}</p>
                     </div>
                     <div className="bg-green-50 p-3 rounded-lg">
-                      <h4 className="font-medium text-sm text-green-800">Carbs</h4>
-                      <p className="text-green-600">{analysis.analysis.macroBreakdown.carbs}</p>
+                      <h4 className="font-medium text-xs sm:text-sm text-green-800">Carbs</h4>
+                      <p className="text-green-600 text-sm sm:text-base">{analysis.analysis.macroBreakdown.carbs}</p>
                     </div>
                     <div className="bg-yellow-50 p-3 rounded-lg">
-                      <h4 className="font-medium text-sm text-yellow-800">Fats</h4>
-                      <p className="text-yellow-600">{analysis.analysis.macroBreakdown.fats}</p>
+                      <h4 className="font-medium text-xs sm:text-sm text-yellow-800">Fats</h4>
+                      <p className="text-yellow-600 text-sm sm:text-base">{analysis.analysis.macroBreakdown.fats}</p>
                     </div>
                   </div>
                 </div>
               </div>
               
+              {/* Improvements */}
               <div>
-                <h3 className="font-medium text-lg mb-4">Suggested Improvements</h3>
-                <div className="grid grid-cols-3 gap-4">
+                <h3 className="font-medium text-base sm:text-lg mb-4">Suggested Improvements</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {analysis.improvements.map((improvement, index) => (
                     <div 
                       key={index} 
-                      className="bg-gray-50 rounded-lg p-4 flex flex-col h-full"
+                      className="bg-gray-50 rounded-lg p-3 sm:p-4 flex flex-col h-full"
                     >
                       <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-medium text-gray-800">{improvement.title}</h4>
+                        <h4 className="font-medium text-sm sm:text-base text-gray-800">{improvement.title}</h4>
                         <span className={`text-xs px-2 py-1 rounded-full ${
                           improvement.priority === 'HIGH' ? 'bg-red-100 text-red-800' :
                           improvement.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
@@ -335,7 +342,7 @@ export default function LogMealPage() {
                           {improvement.priority}
                         </span>
                       </div>
-                      <p className="text-gray-600 text-sm flex-grow">{improvement.description}</p>
+                      <p className="text-xs sm:text-sm text-gray-600 flex-grow">{improvement.description}</p>
                     </div>
                   ))}
                 </div>
@@ -349,22 +356,22 @@ export default function LogMealPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-4 mt-6">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6">
                 <button 
-                  className={`flex-1 bg-blue-500 text-white py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-600
+                  className={`flex-1 bg-blue-500 text-white py-2 sm:py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-600 text-sm sm:text-base
                     ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
                   onClick={saveMeal}
                   disabled={isSaving}
                 >
                   {isSaving ? (
-                    <><Loader2 className="h-5 w-5 animate-spin" /> Saving...</>
+                    <><Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> Saving...</>
                   ) : (
-                    <><Save className="h-5 w-5" /> Save Meal</>
+                    <><Save className="h-4 w-4 sm:h-5 sm:w-5" /> Save Meal</>
                   )}
                 </button>
                 <button
                   onClick={() => setAnalysis(null)}
-                  className="flex-1 bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 transition-colors"
+                  className="flex-1 bg-green-500 text-white py-2 sm:py-3 rounded-lg hover:bg-green-600 transition-colors text-sm sm:text-base"
                 >
                   Analyse Again
                 </button>
@@ -376,3 +383,211 @@ export default function LogMealPage() {
     </div>
   );
 }
+
+//   return (
+//     <div className="space-y-6">
+//       <div className="flex justify-between items-center">
+//         <h1 className="text-3xl font-bold">Log a Meal</h1>
+//       </div>
+
+//       {error && (
+//         <div className="bg-red-50 text-red-600 p-4 rounded-lg">
+//           {error}
+//         </div>
+//       )}
+
+//       <div className="grid gap-6">
+//         {/* Meal Details Section */}
+//         <div className="bg-white rounded-lg shadow p-6">
+//           <div className="flex flex-row items-center justify-between pb-2">
+//             <h2 className="text-xl font-semibold">Meal Details</h2>
+//             <UtensilsCrossed className="h-5 w-5 text-blue-500" />
+//           </div>
+//           <div className="mt-4">
+//             <input
+//               type="text"
+//               placeholder="Meal Name"
+//               value={mealName}
+//               onChange={(e) => setMealName(e.target.value)}
+//               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-lg"
+//             />
+//           </div>
+//         </div>
+
+//         <div className="bg-white rounded-lg shadow p-6">
+//           <div className="flex flex-row items-center justify-between">
+//             <h2 className="text-xl font-semibold">Ingredients</h2>
+//             <button
+//               onClick={addIngredient}
+//               className="flex items-center gap-2 text-blue-500 hover:text-blue-600"
+//             >
+//               <Plus className="h-5 w-5" /> Add Ingredient
+//             </button>
+//           </div>
+//           <div className="mt-4 space-y-4">
+//             {ingredients.map((ingredient, index) => (
+//               <div key={index} className="flex gap-4 items-center">
+//                 <input
+//                   type="text"
+//                   placeholder="Ingredient name"
+//                   value={ingredient.name}
+//                   onChange={(e) => updateIngredient(index, 'name', e.target.value)}
+//                   className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+//                 />
+//                 <input
+//                   type="number"
+//                   placeholder="Weight"
+//                   value={ingredient.weight}
+//                   onChange={(e) => updateIngredient(index, 'weight', e.target.value)}
+//                   className="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+//                 />
+//                 <select
+//                   value={ingredient.unit}
+//                   onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
+//                   className="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+//                 >
+//                   <option value="g">grams</option>
+//                   <option value="oz">ounces</option>
+//                   <option value="ml">milliliters</option>
+//                   <option value="cups">cups</option>
+//                 </select>
+//                 {ingredients.length > 1 && (
+//                   <button
+//                     onClick={() => removeIngredient(index)}
+//                     className="text-red-500 hover:text-red-700"
+//                   >
+//                     <Trash2 className="h-5 w-5" />
+//                   </button>
+//                 )}
+//               </div>
+//             ))}
+//           </div>
+//         </div>
+
+//         <div className="bg-white rounded-lg shadow p-6">
+//           <h2 className="text-xl font-semibold">Cooking Instructions</h2>
+//           <div className="mt-4">
+//             <textarea
+//               placeholder="Optional cooking instructions..."
+//               rows={4}
+//               value={instructions}
+//               onChange={(e) => setInstructions(e.target.value)}
+//               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+//             />
+//           </div>
+//         </div>
+
+//         <div className="bg-white rounded-lg shadow p-6">
+//           <div className="flex flex-row items-center justify-between pb-4">
+//             <h2 className="text-xl font-semibold">AI Analysis</h2>
+//             {!analysis && (
+//               <button 
+//                 className={`bg-green-500 text-white px-6 py-2 rounded-lg flex items-center gap-2 hover:bg-green-600
+//                   ${isAnalysing || !mealName || ingredients[0].name === '' ? 'opacity-50 cursor-not-allowed' : ''}`}
+//                 onClick={analyseMeal}
+//                 disabled={isAnalysing || !mealName || ingredients[0].name === ''}
+//               >
+//                 {isAnalysing ? (
+//                   <><Loader2 className="h-5 w-5 animate-spin" /> Analysing...</>
+//                 ) : (
+//                   'Analyse Meal'
+//                 )}
+//               </button>
+//             )}
+//           </div>
+
+//           {analysis && (
+//             <div className="space-y-6">
+//               {/* Health Score */}
+//               <div className="flex items-center gap-4">
+//                 <div className="bg-blue-50 rounded-full p-6 h-24 w-24 flex items-center justify-center">
+//                   <span className="text-3xl font-bold text-blue-600">{analysis.score}</span>
+//                 </div>
+//                 <div>
+//                   <h3 className="font-medium text-lg">Health Score</h3>
+//                   <p className="text-gray-600 text-sm">Out of 100 possible points</p>
+//                 </div>
+//               </div>
+
+//               <div>
+//                 <h3 className="font-medium text-lg mb-2">Nutritional Overview</h3>
+//                 <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+//                   <p className="text-gray-700">{analysis.analysis.nutritionalValue}</p>
+//                   <p className="text-gray-700">{analysis.analysis.calorieEstimate}</p>
+                  
+//                   <div className="grid grid-cols-3 gap-4 mt-4">
+//                     <div className="bg-blue-50 p-3 rounded-lg">
+//                       <h4 className="font-medium text-sm text-blue-800">Proteins</h4>
+//                       <p className="text-blue-600">{analysis.analysis.macroBreakdown.proteins}</p>
+//                     </div>
+//                     <div className="bg-green-50 p-3 rounded-lg">
+//                       <h4 className="font-medium text-sm text-green-800">Carbs</h4>
+//                       <p className="text-green-600">{analysis.analysis.macroBreakdown.carbs}</p>
+//                     </div>
+//                     <div className="bg-yellow-50 p-3 rounded-lg">
+//                       <h4 className="font-medium text-sm text-yellow-800">Fats</h4>
+//                       <p className="text-yellow-600">{analysis.analysis.macroBreakdown.fats}</p>
+//                     </div>
+//                   </div>
+//                 </div>
+//               </div>
+              
+//               <div>
+//                 <h3 className="font-medium text-lg mb-4">Suggested Improvements</h3>
+//                 <div className="grid grid-cols-3 gap-4">
+//                   {analysis.improvements.map((improvement, index) => (
+//                     <div 
+//                       key={index} 
+//                       className="bg-gray-50 rounded-lg p-4 flex flex-col h-full"
+//                     >
+//                       <div className="flex justify-between items-start mb-2">
+//                         <h4 className="font-medium text-gray-800">{improvement.title}</h4>
+//                         <span className={`text-xs px-2 py-1 rounded-full ${
+//                           improvement.priority === 'HIGH' ? 'bg-red-100 text-red-800' :
+//                           improvement.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
+//                           'bg-green-100 text-green-800'
+//                         }`}>
+//                           {improvement.priority}
+//                         </span>
+//                       </div>
+//                       <p className="text-gray-600 text-sm flex-grow">{improvement.description}</p>
+//                     </div>
+//                   ))}
+//                 </div>
+//               </div>
+
+//               {/* Metadata */}
+//               <div className="text-xs text-gray-500 mt-4 space-y-1">
+//                 <p>Analysis Version: {analysis.metadata.analysisVersion}</p>
+//                 <p>Model: {analysis.metadata.modelUsed}</p>
+//                 <p>Generated: {new Date(analysis.metadata.timestamp).toLocaleString()}</p>
+//               </div>
+
+//               {/* Action Buttons */}
+//               <div className="flex gap-4 mt-6">
+//                 <button 
+//                   className={`flex-1 bg-blue-500 text-white py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-600
+//                     ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+//                   onClick={saveMeal}
+//                   disabled={isSaving}
+//                 >
+//                   {isSaving ? (
+//                     <><Loader2 className="h-5 w-5 animate-spin" /> Saving...</>
+//                   ) : (
+//                     <><Save className="h-5 w-5" /> Save Meal</>
+//                   )}
+//                 </button>
+//                 <button
+//                   onClick={() => setAnalysis(null)}
+//                   className="flex-1 bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 transition-colors"
+//                 >
+//                   Analyse Again
+//                 </button>
+//               </div>
+//             </div>
+//           )}
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
