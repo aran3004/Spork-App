@@ -23,6 +23,7 @@ interface RecentMeal {
       calorieEstimate: string;
     };
   };
+  created_at: string;
 }
 
 export function RecentMeals() {
@@ -32,19 +33,41 @@ export function RecentMeals() {
 
   useEffect(() => {
     async function fetchRecentMeals() {
-      const { data } = await supabase
-        .from('meals')
-        .select('id, name, ingredients, analysis')
-        .order('created_at', { ascending: false })
-        .limit(5);
+      try {
+        const { data, error } = await supabase
+          .rpc('get_recent_public_meals', { limit_count: 5 });
 
-      if (data) {
-        setMeals(data as RecentMeal[]);
+        if (error) {
+          console.error('Error fetching meals:', error);
+          return;
+        }
+
+        if (data) {
+          setMeals(data as RecentMeal[]);
+        }
+      } catch (error) {
+        console.error('Unexpected error:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
 
     fetchRecentMeals();
+
+    // Subscribe to changes in meals table
+    const mealSubscription = supabase
+      .channel('public_meals')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'meals' },
+        () => {
+          fetchRecentMeals();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      mealSubscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -167,3 +190,4 @@ export function RecentMeals() {
     </section>
   );
 }
+
