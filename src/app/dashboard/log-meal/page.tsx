@@ -44,7 +44,7 @@ export default function LogMealPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+//   const [isLoading, setIsLoading] = useState(true);
   
   const router = useRouter();
 
@@ -56,7 +56,7 @@ export default function LogMealPage() {
         return;
       }
       setUser(user);
-      setIsLoading(false);
+    //   setIsLoading(false);
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {

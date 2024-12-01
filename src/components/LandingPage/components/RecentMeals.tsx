@@ -32,7 +32,7 @@ export function RecentMeals() {
 
   useEffect(() => {
     async function fetchRecentMeals() {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('meals')
         .select('id, name, ingredients, analysis')
         .order('created_at', { ascending: false })
