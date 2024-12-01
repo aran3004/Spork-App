@@ -1,7 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Save, UtensilsCrossed, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import { User } from '@supabase/supabase-js';
 
 interface Ingredient {
   name: string;
@@ -10,26 +13,26 @@ interface Ingredient {
 }
 
 interface MealAnalysis {
-    score: number;
-    improvements: Array<{
-      title: string;
-      description: string;
-      priority: 'HIGH' | 'MEDIUM' | 'LOW';
-    }>;
-    analysis: {
-      nutritionalValue: string;
-      calorieEstimate: string;
-      macroBreakdown: {
-        proteins: string;
-        carbs: string;
-        fats: string;
-      };
+  score: number;
+  improvements: Array<{
+    title: string;
+    description: string;
+    priority: 'HIGH' | 'MEDIUM' | 'LOW';
+  }>;
+  analysis: {
+    nutritionalValue: string;
+    calorieEstimate: string;
+    macroBreakdown: {
+      proteins: string;
+      carbs: string;
+      fats: string;
     };
-    metadata: {
-      analysisVersion: string;
-      modelUsed: string;
-      timestamp: string;
-    };
+  };
+  metadata: {
+    analysisVersion: string;
+    modelUsed: string;
+    timestamp: string;
+  };
 }
 
 export default function LogMealPage() {
@@ -38,7 +41,84 @@ export default function LogMealPage() {
   const [instructions, setInstructions] = useState('');
   const [analysis, setAnalysis] = useState<MealAnalysis | null>(null);
   const [isAnalysing, setIsAnalysing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user) {
+        router.push('/auth/signin');
+        return;
+      }
+      setUser(user);
+      setIsLoading(false);
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        router.push('/auth/signin');
+      }
+      setUser(session?.user || null);
+    });
+
+    checkUser();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [router]);
+
+  const saveMeal = async () => {
+    if (!user) {
+      setError('Please sign in to save meals');
+      router.push('/auth/signin');
+      return;
+    }
+
+    if (!mealName || ingredients[0].name === '') {
+      setError('Please provide a meal name and at least one ingredient');
+      return;
+    }
+
+    setIsSaving(true);
+    setError('');
+
+    try {
+      const { error: mealError } = await supabase
+        .from('meals')
+        .insert({
+          user_id: user.id,
+          name: mealName,
+          ingredients: ingredients.map(i => ({
+            name: i.name,
+            weight: parseFloat(i.weight),
+            unit: i.unit
+          })),
+          instructions,
+          analysis: analysis || null,
+          created_at: new Date().toISOString()
+        });
+
+      if (mealError) throw mealError;
+
+      // Clear form after successful save
+      setMealName('');
+      setIngredients([{ name: '', weight: '', unit: 'g' }]);
+      setInstructions('');
+      setAnalysis(null);
+      
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save meal');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const analyseMeal = async () => {
     setIsAnalysing(true);
@@ -93,16 +173,16 @@ export default function LogMealPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Log a Meal</h1>
-        <button 
-          className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-600"
-          onClick={() => console.log({ mealName, ingredients, instructions })}
-        >
-          <Save className="h-5 w-5" />
-          Save Meal
-        </button>
       </div>
 
+      {error && (
+        <div className="bg-red-50 text-red-600 p-4 rounded-lg">
+          {error}
+        </div>
+      )}
+
       <div className="grid gap-6">
+        {/* Meal Details Section */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex flex-row items-center justify-between pb-2">
             <h2 className="text-xl font-semibold">Meal Details</h2>
@@ -201,91 +281,98 @@ export default function LogMealPage() {
             )}
           </div>
 
-          {error && (
-            <div className="mb-4 p-4 bg-red-50 text-red-600 rounded-lg">
-              {error}
+          {analysis && (
+            <div className="space-y-6">
+              {/* Health Score */}
+              <div className="flex items-center gap-4">
+                <div className="bg-blue-50 rounded-full p-6 h-24 w-24 flex items-center justify-center">
+                  <span className="text-3xl font-bold text-blue-600">{analysis.score}</span>
+                </div>
+                <div>
+                  <h3 className="font-medium text-lg">Health Score</h3>
+                  <p className="text-gray-600 text-sm">Out of 100 possible points</p>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-medium text-lg mb-2">Nutritional Overview</h3>
+                <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                  <p className="text-gray-700">{analysis.analysis.nutritionalValue}</p>
+                  <p className="text-gray-700">{analysis.analysis.calorieEstimate}</p>
+                  
+                  <div className="grid grid-cols-3 gap-4 mt-4">
+                    <div className="bg-blue-50 p-3 rounded-lg">
+                      <h4 className="font-medium text-sm text-blue-800">Proteins</h4>
+                      <p className="text-blue-600">{analysis.analysis.macroBreakdown.proteins}</p>
+                    </div>
+                    <div className="bg-green-50 p-3 rounded-lg">
+                      <h4 className="font-medium text-sm text-green-800">Carbs</h4>
+                      <p className="text-green-600">{analysis.analysis.macroBreakdown.carbs}</p>
+                    </div>
+                    <div className="bg-yellow-50 p-3 rounded-lg">
+                      <h4 className="font-medium text-sm text-yellow-800">Fats</h4>
+                      <p className="text-yellow-600">{analysis.analysis.macroBreakdown.fats}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="font-medium text-lg mb-4">Suggested Improvements</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  {analysis.improvements.map((improvement, index) => (
+                    <div 
+                      key={index} 
+                      className="bg-gray-50 rounded-lg p-4 flex flex-col h-full"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-medium text-gray-800">{improvement.title}</h4>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          improvement.priority === 'HIGH' ? 'bg-red-100 text-red-800' :
+                          improvement.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {improvement.priority}
+                        </span>
+                      </div>
+                      <p className="text-gray-600 text-sm flex-grow">{improvement.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Metadata */}
+              <div className="text-xs text-gray-500 mt-4 space-y-1">
+                <p>Analysis Version: {analysis.metadata.analysisVersion}</p>
+                <p>Model: {analysis.metadata.modelUsed}</p>
+                <p>Generated: {new Date(analysis.metadata.timestamp).toLocaleString()}</p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-4 mt-6">
+                <button 
+                  className={`flex-1 bg-blue-500 text-white py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-600
+                    ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  onClick={saveMeal}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <><Loader2 className="h-5 w-5 animate-spin" /> Saving...</>
+                  ) : (
+                    <><Save className="h-5 w-5" /> Save Meal</>
+                  )}
+                </button>
+                <button
+                  onClick={() => setAnalysis(null)}
+                  className="flex-1 bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 transition-colors"
+                >
+                  Analyse Again
+                </button>
+              </div>
             </div>
           )}
-            {analysis && (
-                <div className="space-y-6">
-                    {/* Health Score */}
-                    <div className="flex items-center gap-4">
-                    <div className="bg-blue-50 rounded-full p-6 h-24 w-24 flex items-center justify-center">
-                        <span className="text-3xl font-bold text-blue-600">{analysis.score}</span>
-                    </div>
-                    <div>
-                        <h3 className="font-medium text-lg">Health Score</h3>
-                        <p className="text-gray-600 text-sm">Out of 100 possible points</p>
-                    </div>
-                    </div>
-
-                    {/* Nutritional Overview */}
-                    <div>
-                    <h3 className="font-medium text-lg mb-2">Nutritional Overview</h3>
-                    <div className="bg-gray-50 rounded-lg p-4 space-y-4">
-                        <p className="text-gray-700">{analysis.analysis.nutritionalValue}</p>
-                        <p className="text-gray-700">{analysis.analysis.calorieEstimate}</p>
-                        
-                        <div className="grid grid-cols-3 gap-4 mt-4">
-                        <div className="bg-blue-50 p-3 rounded-lg">
-                            <h4 className="font-medium text-sm text-blue-800">Proteins</h4>
-                            <p className="text-blue-600">{analysis.analysis.macroBreakdown.proteins}</p>
-                        </div>
-                        <div className="bg-green-50 p-3 rounded-lg">
-                            <h4 className="font-medium text-sm text-green-800">Carbs</h4>
-                            <p className="text-green-600">{analysis.analysis.macroBreakdown.carbs}</p>
-                        </div>
-                        <div className="bg-yellow-50 p-3 rounded-lg">
-                            <h4 className="font-medium text-sm text-yellow-800">Fats</h4>
-                            <p className="text-yellow-600">{analysis.analysis.macroBreakdown.fats}</p>
-                        </div>
-                        </div>
-                    </div>
-                    </div>
-                    
-                    {/* Improvements */}
-                    <div>
-                    <h3 className="font-medium text-lg mb-4">Suggested Improvements</h3>
-                    <div className="grid grid-cols-3 gap-4">
-                        {analysis.improvements.map((improvement, index) => (
-                        <div 
-                            key={index} 
-                            className="bg-gray-50 rounded-lg p-4 flex flex-col h-full"
-                        >
-                            <div className="flex justify-between items-start mb-2">
-                            <h4 className="font-medium text-gray-800">{improvement.title}</h4>
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                                improvement.priority === 'HIGH' ? 'bg-red-100 text-red-800' :
-                                improvement.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-green-100 text-green-800'
-                            }`}>
-                                {improvement.priority}
-                            </span>
-                            </div>
-                            <p className="text-gray-600 text-sm flex-grow">{improvement.description}</p>
-                        </div>
-                        ))}
-                    </div>
-                    </div>
-
-                    {/* Metadata */}
-                    <div className="text-xs text-gray-500 mt-4 space-y-1">
-                    <p>Analysis Version: {analysis.metadata.analysisVersion}</p>
-                    <p>Model: {analysis.metadata.modelUsed}</p>
-                    <p>Generated: {new Date(analysis.metadata.timestamp).toLocaleString()}</p>
-                    </div>
-
-                    <button
-                    onClick={() => setAnalysis(null)}
-                    className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition-colors mt-4"
-                    >
-                    Analyse Again
-                    </button>
-                </div>
-                )}
-            </div>
+        </div>
       </div>
     </div>
   );
 }
-

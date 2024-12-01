@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Navbar } from './components/Navbar'
 import { Hero } from './components/Hero'
+import { RecentMeals } from './components/RecentMeals'
 import { Features } from './components/Features'
 import { Benefits } from './components/Benefits'
 import { Testimonials } from './components/Testimonials'
@@ -19,6 +20,7 @@ export default function LandingPage(): JSX.Element {
     <div className="min-h-screen">
       <Navbar />
       <Hero />
+      <RecentMeals />
       <Features />
       <Benefits />
       <Testimonials />
