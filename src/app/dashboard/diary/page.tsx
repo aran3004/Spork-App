@@ -10,12 +10,6 @@ interface DateGroups {
   [key: string]: MealEntry[];
 }
 
-interface MacroBreakdown {
-  protein: number;
-  carbs: number;
-  fat: number;
-}
-
 interface RecentMeal {
   id: string;
   name: string;
