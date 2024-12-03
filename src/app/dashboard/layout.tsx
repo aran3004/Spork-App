@@ -1,13 +1,13 @@
 'use client';
-
 import React, { ReactNode } from 'react';
-import { Home, UtensilsCrossed, ChartLine, Settings, User } from 'lucide-react';
+import { Home, UtensilsCrossed, ChartLine, Settings, User, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const navItems = [
   { icon: Home, label: 'Overview', href: '/dashboard' },
   { icon: UtensilsCrossed, label: 'Log Meal', href: '/dashboard/log-meal' },
+  { icon: BookOpen, label: 'Diary', href: '/dashboard/diary' },
   { icon: ChartLine, label: 'Progress', href: '/dashboard/progress' },
   { icon: Settings, label: 'Settings', href: '/dashboard/settings' },
   { icon: User, label: 'Profile', href: '/dashboard/profile' }
@@ -44,7 +44,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           })}
         </div>
       </nav>
-
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
         <div className="flex justify-around items-center h-16">
@@ -67,7 +66,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           })}
         </div>
       </nav>
-
       {/* Main Content */}
       <main className="md:ml-64 pt-16 min-h-screen pb-20 md:pb-8">
         <div className="max-w-6xl mx-auto p-4 md:p-8">
