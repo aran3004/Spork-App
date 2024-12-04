@@ -1,42 +1,42 @@
-'use client'
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { AuthChangeEvent } from '@supabase/supabase-js'
-import { Button } from '@/components/ui/button'
-import Link from 'next/link'
+// app/auth/AuthForm.tsx
+'use client';
+
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { AuthChangeEvent } from '@supabase/supabase-js';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 export function AuthForm({ isSignUp }: { isSignUp: boolean }) {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState('')
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const redirectTo = searchParams.get('redirectTo') || '/dashboard'
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirectTo') || '/dashboard';
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session) => {
-      console.log('Auth state changed:', event, session)
+      console.log('Auth state changed:', event, session);
       
-      if (session?.user) {
-        if (event === 'SIGNED_IN') {
-          try {
-            await addUserToDatabase(session.user.id, session.user.email)
-            router.push(redirectTo)
-            router.refresh()
-          } catch (error) {
-            console.error('Error in auth state change:', error)
-            setMessage('Error updating user information')
-          }
+      if (session?.user && event === 'SIGNED_IN') {
+        try {
+          await addUserToDatabase(session.user.id, session.user.email);
+          router.push(redirectTo);
+          router.refresh();
+        } catch (error) {
+          console.error('Error in auth state change:', error);
+          setMessage('Error updating user information');
         }
       }
-    })
+    });
 
     return () => {
-      subscription.unsubscribe()
-    }
-  }, [router, redirectTo])
+      subscription.unsubscribe();
+    };
+  }, [router, redirectTo]);
 
   const addUserToDatabase = async (userId: string, userEmail: string | undefined) => {
     try {
@@ -48,20 +48,20 @@ export function AuthForm({ isSignUp }: { isSignUp: boolean }) {
           created_at: new Date().toISOString()
         }, {
           onConflict: 'id'
-        })
+        });
 
-      if (upsertError) throw upsertError
-      console.log('User successfully added/updated in database')
+      if (upsertError) throw upsertError;
+      console.log('User successfully added/updated in database');
     } catch (error) {
-      console.error('Error in addUserToDatabase:', error)
-      throw error
+      console.error('Error in addUserToDatabase:', error);
+      throw error;
     }
-  }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setMessage('')
+    e.preventDefault();
+    setLoading(true);
+    setMessage('');
     
     try {
       if (isSignUp) {
@@ -71,30 +71,30 @@ export function AuthForm({ isSignUp }: { isSignUp: boolean }) {
           options: {
             emailRedirectTo: `${window.location.origin}/auth/callback`,
           }
-        })
+        });
         
-        if (error) throw error
-        setMessage('Check your email for the confirmation link!')
+        if (error) throw error;
+        setMessage('Check your email for the confirmation link!');
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password
-        })
+        });
         
-        if (error) throw error
+        if (error) throw error;
         // No need to redirect here as the onAuthStateChange handler will do it
       }
     } catch (error) {
       if (error instanceof Error) {
-        setMessage(error.message)
+        setMessage(error.message);
       } else {
-        setMessage('An unexpected error occurred')
+        setMessage('An unexpected error occurred');
       }
-      console.error('Auth error:', error)
+      console.error('Auth error:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-sm border">
@@ -192,8 +192,9 @@ export function AuthForm({ isSignUp }: { isSignUp: boolean }) {
         )}
       </div>
     </div>
-  )
+  );
 }
+
 
 // 'use client'
 // import { useState, useEffect } from 'react'
