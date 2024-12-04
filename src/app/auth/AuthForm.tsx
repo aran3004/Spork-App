@@ -181,7 +181,7 @@ export function AuthForm({ isSignUp }: { isSignUp: boolean }) {
           </>
         ) : (
           <>
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link 
               href="/auth/sign-up"
               className="text-blue-500 hover:text-blue-600 hover:underline"
@@ -194,6 +194,7 @@ export function AuthForm({ isSignUp }: { isSignUp: boolean }) {
     </div>
   )
 }
+
 // 'use client'
 // import { useState, useEffect } from 'react'
 // import { supabase } from '@/lib/supabase'

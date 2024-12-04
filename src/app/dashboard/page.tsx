@@ -76,12 +76,6 @@ interface RecentMeal {
   created_at: string;
 }
 
-interface PreferencesFormData {
-  primaryGoals: string[];
-  dietaryRestrictions: string[];
-  healthFocus: string[];
-  mealPreferences: string[];
-}
 
 const getTimeSince = (dateString: string | null): string => {
   if (!dateString) return '-';
