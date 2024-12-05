@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { User, Mail, Scale, Target, List, Utensils, Heart, Settings } from 'lucide-react';
+import { User, Target, List, Utensils, Heart, Settings } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { PreferencesCollection } from '@/components/PreferencesCollection';
