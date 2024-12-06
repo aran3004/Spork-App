@@ -8,8 +8,8 @@ const navItems = [
   { icon: Home, label: 'Overview', href: '/dashboard' },
   { icon: UtensilsCrossed, label: 'Log Meal', href: '/dashboard/log-meal' },
   { icon: BookOpen, label: 'Diary', href: '/dashboard/diary' },
-  { icon: ChartLine, label: 'Progress', href: '/dashboard/progress' },
-  { icon: Settings, label: 'Settings', href: '/dashboard/settings' },
+  // { icon: ChartLine, label: 'Progress', href: '/dashboard/progress' },
+  // { icon: Settings, label: 'Settings', href: '/dashboard/settings' },
   { icon: User, label: 'Profile', href: '/dashboard/profile' }
 ];
 
