@@ -1,6 +1,6 @@
 'use client';
 import React, { ReactNode } from 'react';
-import { Home, UtensilsCrossed, ChartLine, Settings, User, BookOpen } from 'lucide-react';
+import { Home, UtensilsCrossed, User, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
