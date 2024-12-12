@@ -409,7 +409,7 @@ export default function SimpleVoiceAssistant() {
                   <div className="mt-4 bg-blue-50 text-blue-800 p-4 rounded-lg">
                     <p className="text-sm">Listening for meal modifications...</p>
                     <p className="text-xs mt-2 text-blue-600">
-                      Try saying things like "change the flour to 50g" or "add a serving of mayo"
+                      Try saying things like &quot;change the flour to 50g&quot; or &quot;add a serving of mayo&quot;
                     </p>
                   </div>
                 )}

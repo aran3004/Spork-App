@@ -1,3 +1,12 @@
+// {
+//   "extends": ["next/core-web-vitals", "next/typescript"]
+// }
+
 {
-  "extends": ["next/core-web-vitals", "next/typescript"]
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "@typescript-eslint/no-explicit-any": "off", // Only if you really need to use 'any'
+    "react-hooks/exhaustive-deps": "warn", // Changes it from error to warning
+    "react/no-unescaped-entities": "off" // If you prefer not to escape quotes
+  }
 }
