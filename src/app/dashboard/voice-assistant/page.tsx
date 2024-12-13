@@ -1,9 +1,9 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Mic, MicOff, Loader2, PieChart } from 'lucide-react';
-import MealActions from '@/components/ui/MealActions';
+import { Mic, MicOff, Loader2, PieChart, ChevronDown, ChevronUp, Lightbulb, Save } from 'lucide-react';
 
 interface IWindow extends Window {
   webkitSpeechRecognition: any;
@@ -28,12 +28,6 @@ interface NutritionData {
   ingredients: Ingredient[];
 }
 
-interface EditState {
-  isEditing: boolean;
-  originalTranscript: string;
-  originalNutritionData: NutritionData | null;
-}
-
 export default function SimpleVoiceAssistant() {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -41,30 +35,28 @@ export default function SimpleVoiceAssistant() {
   const [error, setError] = useState<string | null>(null);
   const [recognition, setRecognition] = useState<any>(null);
   const [nutritionData, setNutritionData] = useState<NutritionData | null>(null);
-  const [editState, setEditState] = useState<EditState>({
-    isEditing: false,
-    originalTranscript: '',
-    originalNutritionData: null
-  });
+  const [showIngredients, setShowIngredients] = useState(false);
+  const [currentTranscript, setCurrentTranscript] = useState('');
 
-  // Key change: setupRecognition takes editState as a parameter
-  const setupRecognition = (currentEditState: EditState) => {
+  const setupRecognition = useCallback(() => {
     const windowWithSpeech = window as unknown as IWindow;
     const SpeechRecognition = windowWithSpeech.webkitSpeechRecognition || windowWithSpeech.SpeechRecognition;
     
     if (SpeechRecognition) {
       const recognitionInstance = new SpeechRecognition();
-      recognitionInstance.continuous = false;
-      recognitionInstance.interimResults = false;
+      recognitionInstance.continuous = true;
+      recognitionInstance.interimResults = true;
       
       recognitionInstance.onresult = (event: any) => {
         const current = event.resultIndex;
-        const newTranscriptText = event.results[current][0].transcript;
+        const transcript = event.results[current][0].transcript;
+        const isFinal = event.results[current].isFinal;
         
-        console.log('New speech detected:', newTranscriptText);
-        // Now we pass the current editState
-        processTranscript(newTranscriptText, currentEditState);
-        setIsListening(false);
+        setCurrentTranscript(transcript);
+        
+        if (isFinal) {
+          console.log('Final transcript:', transcript);
+        }
       };
 
       recognitionInstance.onerror = (event: any) => {
@@ -73,47 +65,66 @@ export default function SimpleVoiceAssistant() {
         setIsListening(false);
       };
 
-      recognitionInstance.onend = () => {
-        if (isListening) {
-          recognitionInstance.start();
-        }
-      };
-
       return recognitionInstance;
     }
     
     setError('Speech recognition is not supported in this browser.');
     return null;
+  }, []);
+
+  useEffect(() => {
+    const recognitionInstance = setupRecognition();
+    setRecognition(recognitionInstance);
+    
+    return () => {
+      if (recognitionInstance) {
+        recognitionInstance.abort();
+      }
+    };
+  }, [setupRecognition]);
+
+  const startListening = () => {
+    if (!recognition) return;
+    
+    setError(null);
+    setIsListening(true);
+    setCurrentTranscript('');
+    
+    try {
+      recognition.start();
+    } catch (err) {
+      console.error('Recognition start error:', err);
+    }
   };
 
-  // Update recognition instance when edit state changes
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const recognitionInstance = setupRecognition(editState);
-      setRecognition(recognitionInstance);
+  const stopListening = async () => {
+    if (!recognition) return;
+    
+    recognition.stop();
+    setIsListening(false);
+    
+    if (currentTranscript.trim()) {
+      console.log('Processing transcript:', currentTranscript);
+      await processTranscript(currentTranscript);
     }
-  }, [editState.isEditing]); // Now depends on editState.isEditing
+    
+    setCurrentTranscript('');
+  };
 
-  // Modified to take editState as a parameter
-  const processTranscript = async (text: string, currentEditState: EditState) => {
+  const processTranscript = async (text: string) => {
     if (!text.trim()) {
       setError('Please provide a meal description');
       return;
     }
     
     setIsProcessing(true);
-    console.log('Processing transcript:', text);
-    console.log('Is editing:', currentEditState.isEditing);
-    console.log('Original meal:', currentEditState.originalTranscript);
     
     try {
       const payload = {
         mealDescription: text,
-        isEditing: currentEditState.isEditing,
-        originalMeal: currentEditState.isEditing ? currentEditState.originalTranscript : undefined
+        isEditing: nutritionData !== null, // If we have nutrition data, we're editing
+        originalMeal: nutritionData !== null ? transcript : undefined
       };
-
-      console.log('Request payload:', payload);
 
       const response = await fetch('/api/voice-chat', {
         method: 'POST',
@@ -124,7 +135,6 @@ export default function SimpleVoiceAssistant() {
       });
 
       const data = await response.json();
-      console.log('API Response:', data);
 
       if (!response.ok) {
         throw new Error(data.message || 'Failed to process transcript');
@@ -132,13 +142,7 @@ export default function SimpleVoiceAssistant() {
       
       if (data.nutrition) {
         setNutritionData(data.nutrition);
-        if (currentEditState.isEditing) {
-          // For edits, append the modification to the original transcript
-          setTranscript(`${currentEditState.originalTranscript} (Modified: ${text})`);
-        } else {
-          // For new meals, just set the transcript
-          setTranscript(text);
-        }
+        setTranscript(text);
       } else {
         throw new Error('No nutrition data received');
       }
@@ -148,271 +152,183 @@ export default function SimpleVoiceAssistant() {
       setError(err instanceof Error ? err.message : 'Failed to process transcript');
     } finally {
       setIsProcessing(false);
-      if (currentEditState.isEditing) {
-        // Reset edit state after processing
-        setEditState({
-          isEditing: false,
-          originalTranscript: '',
-          originalNutritionData: null
-        });
-      }
     }
-  };
-
-  const toggleListening = () => {
-    if (isListening) {
-      recognition?.stop();
-      setIsListening(false);
-    } else {
-      if (!editState.isEditing) {
-        setTranscript('');
-        setNutritionData(null);
-      }
-      setError(null);
-      recognition?.start();
-      setIsListening(true);
-    }
-  };
-
-  const handleEdit = () => {
-    if (!transcript || !nutritionData) {
-      setError('No meal data to edit');
-      return;
-    }
-    
-    console.log('Starting edit mode with transcript:', transcript);
-    
-    const newEditState = {
-      isEditing: true,
-      originalTranscript: transcript,
-      originalNutritionData: nutritionData
-    };
-    
-    // Set edit state first
-    setEditState(newEditState);
-    
-    // Clear any existing error
-    setError(null);
-    
-    // Start listening after setting edit state
-    setTimeout(() => {
-      if (recognition) {
-        // Recreate recognition with new edit state
-        const newRecognition = setupRecognition(newEditState);
-        setRecognition(newRecognition);
-        newRecognition?.start();
-        setIsListening(true);
-      }
-    }, 0);
-  };
-
-  const handleCancelEdit = () => {
-    if (isListening && recognition) {
-      recognition.stop();
-    }
-    
-    setIsListening(false);
-    setError(null);
-    
-    // Restore original data
-    setTranscript(editState.originalTranscript);
-    setNutritionData(editState.originalNutritionData);
-    
-    // Reset edit state
-    setEditState({
-      isEditing: false,
-      originalTranscript: '',
-      originalNutritionData: null
-    });
   };
 
   const handleSave = () => {
     console.log('Saving meal:', { transcript, nutritionData });
+    // After saving, you might want to reset the state to allow for a new meal
+    setTranscript('');
+    setNutritionData(null);
   };
   
   const handleSuggestions = () => {
     console.log('Getting suggestions for:', { transcript, nutritionData });
   };
 
-  const calculateMacroPercentages = (data: NutritionData) => {
-    const total = data.protein_content + data.carbohydrate_content + data.fat_content;
-    return {
-      protein: Math.round((data.protein_content / total) * 100),
-      carbs: Math.round((data.carbohydrate_content / total) * 100),
-      fat: Math.round((data.fat_content / total) * 100)
-    };
-  };
-
   return (
-    <div className="container mx-auto px-4 py-8">
-      <Card className="bg-white shadow-lg max-w-4xl mx-auto">
-        <CardContent className="p-4 md:p-6">
-          <div className="flex flex-col gap-6">
-            {/* Voice Input Section with added top padding */}
+    <div className="container mx-auto px-2 py-4">
+      <Card className="bg-white shadow-lg">
+        <CardContent className="p-3">
+          <div className="flex flex-col gap-4">
+            {/* Voice Input Section */}
             <div className="flex flex-col items-center gap-4 pb-6 border-b pt-6">
-              <Button
-                onClick={toggleListening}
-                size="lg"
-                className={`rounded-full w-16 h-16 ${
-                  isListening ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'
-                }`}
-                disabled={isProcessing}
-              >
-                {isListening ? (
-                  <MicOff className="h-6 w-6" />
-                ) : (
-                  <Mic className="h-6 w-6" />
+              <div className="relative">
+                {isListening && (
+                  <>
+                    <div className="absolute inset-0 rounded-full animate-ping bg-red-400 opacity-75" />
+                    <div className="absolute -inset-4 rounded-full animate-pulse bg-red-200 opacity-30" />
+                    <div className="absolute -inset-8 rounded-full animate-pulse bg-red-100 opacity-20" />
+                  </>
                 )}
-              </Button>
+                <Button
+                  onPointerDown={startListening}
+                  onPointerUp={stopListening}
+                  onPointerLeave={stopListening}
+                  size="lg"
+                  className={`relative rounded-full w-16 h-16 transition-all duration-300 touch-none ${
+                    isListening 
+                      ? 'bg-red-500 hover:bg-red-600 scale-110' 
+                      : 'bg-blue-500 hover:bg-blue-600'
+                  }`}
+                  disabled={isProcessing}
+                >
+                  {isListening ? (
+                    <MicOff className="h-6 w-6 animate-pulse" />
+                  ) : (
+                    <Mic className="h-6 w-6" />
+                  )}
+                </Button>
+              </div>
               
-              <p className="text-base md:text-lg font-medium flex items-center gap-2 text-center">
-                {isListening ? 'Listening...' : 'Click to log meal'}
+              <div className="flex flex-col items-center gap-1">
+                <p className={`text-base font-medium flex items-center gap-2 text-center transition-colors ${
+                  isListening ? 'text-red-500' : 'text-gray-700'
+                }`}>
+                  {isListening 
+                    ? '🎙️ Recording...' 
+                    : nutritionData 
+                      ? 'Press and hold to modify meal'
+                      : 'Press and hold to log meal'
+                  }
+                </p>
+                {isListening && currentTranscript && (
+                  <p className="text-sm text-gray-600 max-w-md text-center">
+                    {currentTranscript}
+                  </p>
+                )}
                 {isProcessing && (
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-1 text-blue-500">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Processing...
                   </span>
                 )}
-              </p>
+              </div>
             </div>
 
             {/* Error Display */}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg p-3 md:p-4 mx-2 md:mx-4">
-                <p className="text-sm">{error}</p>
-              </div>
-            )}
-
-            {/* Transcript Display */}
-            {transcript && (
-              <div className="bg-gray-50 rounded-lg p-3 md:p-4 mx-2 md:mx-4">
-                <h3 className="font-medium text-gray-700 mb-2">Logged Meal</h3>
-                <p className="text-gray-600 text-sm md:text-base">{transcript}</p>
+              <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg p-2 text-sm">
+                {error}
               </div>
             )}
 
             {/* Nutrition Data Display */}
             {nutritionData && (
-              <div className="space-y-4 md:space-y-6 mx-2 md:mx-4">
-                {/* Calories and Macros Overview */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Calories Card */}
-                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 md:p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-blue-800 mb-1">Total Calories</p>
-                        <h2 className="text-3xl md:text-4xl font-bold text-blue-900">
-                          {nutritionData.total_calories}
-                        </h2>
-                      </div>
-                      <PieChart className="h-6 w-6 md:h-8 md:w-8 text-blue-500" />
+              <div className="space-y-4">
+                {/* Calories Card */}
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-blue-800">Total Calories</p>
+                      <h2 className="text-3xl font-bold text-blue-900">
+                        {nutritionData.total_calories}
+                      </h2>
                     </div>
-                  </div>
-
-                  {/* Macros Distribution */}
-                  <div className="bg-white rounded-xl p-4 md:p-6 border">
-                    <p className="text-sm font-medium text-gray-600 mb-3">Macronutrients</p>
-                    <div className="space-y-3">
-                      {/* Protein Bar */}
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-xs md:text-sm">
-                          <span>Protein</span>
-                          <span>{nutritionData.protein_content}g</span>
-                        </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-green-500 rounded-full transition-all duration-500"
-                            style={{ width: `${(nutritionData.protein_content / (nutritionData.protein_content + nutritionData.carbohydrate_content + nutritionData.fat_content)) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Carbs Bar */}
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-xs md:text-sm">
-                          <span>Carbs</span>
-                          <span>{nutritionData.carbohydrate_content}g</span>
-                        </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                            style={{ width: `${(nutritionData.carbohydrate_content / (nutritionData.protein_content + nutritionData.carbohydrate_content + nutritionData.fat_content)) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Fat Bar */}
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-xs md:text-sm">
-                          <span>Fat</span>
-                          <span>{nutritionData.fat_content}g</span>
-                        </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-yellow-500 rounded-full transition-all duration-500"
-                            style={{ width: `${(nutritionData.fat_content / (nutritionData.protein_content + nutritionData.carbohydrate_content + nutritionData.fat_content)) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Fiber */}
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-xs md:text-sm">
-                          <span>Fiber</span>
-                          <span>{nutritionData.fiber_content}g</span>
-                        </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-purple-500 rounded-full transition-all duration-500"
-                            style={{ width: `${(nutritionData.fiber_content / 30) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
+                    <PieChart className="h-6 w-6 text-blue-500" />
                   </div>
                 </div>
 
-                {/* Ingredients Breakdown */}
-                <div className="bg-white rounded-xl p-4 md:p-6 border">
-                  <h3 className="text-base md:text-lg font-medium text-gray-800 mb-4">Ingredients</h3>
-                  <div className="space-y-3">
-                    {nutritionData.ingredients.map((ingredient, index) => (
-                      <div 
-                        key={index} 
-                        className="flex flex-col md:flex-row md:justify-between md:items-center p-3 bg-gray-50 rounded-lg gap-2"
-                      >
-                        <div>
-                          <p className="font-medium text-sm md:text-base">
-                            {ingredient.ingredient} {ingredient.weight}
-                          </p>
-                          <p className="text-xs md:text-sm text-gray-500">
-                            {ingredient.calories} calories
-                          </p>
-                        </div>
-                        <div className="text-xs md:text-sm text-gray-600 flex gap-3">
-                          <span>P: {ingredient.protein}g</span>
-                          <span>C: {ingredient.carbohydrates}g</span>
-                          <span>F: {ingredient.fat}g</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                {/* Compact Macros Display */}
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  {[
+                    { label: 'Protein', value: nutritionData.protein_content, color: 'bg-green-100' },
+                    { label: 'Carbs', value: nutritionData.carbohydrate_content, color: 'bg-blue-100' },
+                    { label: 'Fat', value: nutritionData.fat_content, color: 'bg-yellow-100' },
+                    { label: 'Fiber', value: nutritionData.fiber_content, color: 'bg-purple-100' }
+                  ].map((macro, index) => (
+                    <div key={index} className={`${macro.color} p-2 rounded-lg`}>
+                      <p className="text-xs font-medium">{macro.label}</p>
+                      <p className="text-sm font-bold">{macro.value}g</p>
+                    </div>
+                  ))}
                 </div>
-                <MealActions 
-                  onEdit={handleEdit}
-                  onSave={handleSave}
-                  onSuggestions={handleSuggestions}
-                  isEditing={editState.isEditing}
-                  onCancelEdit={handleCancelEdit}
-                />
-                {editState.isEditing && (
-                  <div className="mt-4 bg-blue-50 text-blue-800 p-4 rounded-lg">
-                    <p className="text-sm">Listening for meal modifications...</p>
-                    <p className="text-xs mt-2 text-blue-600">
-                      Try saying things like &quot;change the flour to 50g&quot; or &quot;add a serving of mayo&quot;
-                    </p>
-                  </div>
-                )}
+
+                {/* Collapsible Ingredients Table */}
+                <div className="border rounded-lg">
+                  <Button
+                    variant="ghost"
+                    className="w-full flex justify-between items-center p-3"
+                    onClick={() => setShowIngredients(!showIngredients)}
+                  >
+                    <span className="font-medium">Ingredients</span>
+                    {showIngredients ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                  
+                  {showIngredients && (
+                    <div className="p-2">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="border-b">
+                            <tr>
+                              <th className="text-left p-2">Item</th>
+                              <th className="text-right p-2">Cal</th>
+                              <th className="text-right p-2">P</th>
+                              <th className="text-right p-2">C</th>
+                              <th className="text-right p-2">F</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {nutritionData.ingredients.map((ingredient, index) => (
+                              <tr key={index} className="border-b last:border-0">
+                                <td className="p-2">
+                                  <span className="font-medium">{ingredient.ingredient}</span>
+                                  <span className="text-xs text-gray-500 ml-2">
+                                    {ingredient.weight}
+                                  </span>
+                                </td>
+                                <td className="text-right p-2">{ingredient.calories}</td>
+                                <td className="text-right p-2">{ingredient.protein}</td>
+                                <td className="text-right p-2">{ingredient.carbohydrates}</td>
+                                <td className="text-right p-2">{ingredient.fat}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Simple action buttons */}
+                {/* Action buttons */}
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button 
+                    onClick={handleSuggestions}
+                    className="flex items-center justify-center w-full gap-2 px-3 sm:px-4 py-2.5 bg-gradient-to-br from-blue-50 to-blue-100 text-blue-800 border border-blue-200 rounded-lg hover:from-blue-100 hover:to-blue-150 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm md:text-base font-medium"
+                  >
+                    <Lightbulb className="h-4 w-4 sm:mr-1" />
+                    <span className="sm:inline">Get Suggestions</span>
+                  </button>
+                  
+                  <button 
+                    onClick={handleSave}
+                    className="flex items-center justify-center w-full gap-2 px-3 sm:px-4 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-all text-sm md:text-base font-medium"
+                  >
+                    <Save className="h-4 w-4 sm:mr-1" />
+                    <span className="sm:inline">Save Meal</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
