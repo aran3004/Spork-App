@@ -37,6 +37,7 @@ export default function SimpleVoiceAssistant() {
   const [nutritionData, setNutritionData] = useState<NutritionData | null>(null);
   const [showIngredients, setShowIngredients] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState('');
+  const [finalTranscripts, setFinalTranscripts] = useState<string[]>([]);
   const [micPermission, setMicPermission] = useState<PermissionState>('prompt');
   const [isInitializing, setIsInitializing] = useState(true);
 
@@ -73,10 +74,11 @@ export default function SimpleVoiceAssistant() {
         const transcript = event.results[current][0].transcript;
         const isFinal = event.results[current].isFinal;
         
-        setCurrentTranscript(transcript);
-        
         if (isFinal) {
-          console.log('Final transcript:', transcript);
+          setFinalTranscripts(prev => [...prev, transcript.trim()]);
+          setCurrentTranscript('');
+        } else {
+          setCurrentTranscript(transcript);
         }
       };
   
@@ -85,6 +87,16 @@ export default function SimpleVoiceAssistant() {
         setError(event.error);
         setIsListening(false);
       };
+
+      recognitionInstance.onend = () => {
+        if (isListening) {
+          try {
+            recognitionInstance.start();
+          } catch (err) {
+            console.error('Error restarting recognition:', err);
+          }
+        }
+      };
   
       setRecognition(recognitionInstance);
       return recognitionInstance;
@@ -92,7 +104,7 @@ export default function SimpleVoiceAssistant() {
     
     setError('Speech recognition is not supported in this browser.');
     return null;
-  }, []);
+  }, [isListening]);
 
   useEffect(() => {
     initializeMicrophone();
@@ -103,7 +115,8 @@ export default function SimpleVoiceAssistant() {
     
     setError(null);
     setIsListening(true);
-    setCurrentTranscript(''); // Reset the transcript when starting
+    setCurrentTranscript('');
+    setFinalTranscripts([]);
     
     try {
       recognition.start();
@@ -118,12 +131,18 @@ export default function SimpleVoiceAssistant() {
     recognition.stop();
     setIsListening(false);
     
-    if (currentTranscript.trim()) {
-      console.log('Processing transcript:', currentTranscript);
-      await processTranscript(currentTranscript);
+    const fullTranscript = [...finalTranscripts, currentTranscript]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+    
+    if (fullTranscript) {
+      console.log('Processing full transcript:', fullTranscript);
+      await processTranscript(fullTranscript);
     }
     
     setCurrentTranscript('');
+    setFinalTranscripts([]);
   };
 
   const processTranscript = async (text: string) => {
@@ -273,9 +292,9 @@ export default function SimpleVoiceAssistant() {
                           : 'Press and hold to log meal'
                       }
                     </p>
-                    {isListening && currentTranscript && (
+                    {isListening && (
                       <p className="text-sm text-gray-600 max-w-md text-center">
-                        {currentTranscript}
+                        {finalTranscripts.join(' ')} {currentTranscript}
                       </p>
                     )}
                     {isProcessing && (
