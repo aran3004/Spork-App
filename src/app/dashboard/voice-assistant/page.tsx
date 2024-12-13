@@ -65,18 +65,28 @@ export default function SimpleVoiceAssistant() {
     
     if (SpeechRecognition) {
       const recognitionInstance = new SpeechRecognition();
-      recognitionInstance.continuous = true;
+      recognitionInstance.continuous = false; // Change this to false
       recognitionInstance.interimResults = true;
       
+      let fullTranscript = ''; // Keep track of the full transcript
+  
       recognitionInstance.onresult = (event: any) => {
         const current = event.resultIndex;
         const transcript = event.results[current][0].transcript;
-        const isFinal = event.results[current].isFinal;
         
-        setCurrentTranscript(transcript);
+        // Append the new transcript to the full transcript
+        fullTranscript = fullTranscript + ' ' + transcript;
+        setCurrentTranscript(fullTranscript.trim());
         
-        if (isFinal) {
-          console.log('Final transcript:', transcript);
+        if (event.results[current].isFinal) {
+          console.log('Final transcript:', fullTranscript);
+        }
+      };
+  
+      recognitionInstance.onend = () => {
+        // If still listening (button still pressed), restart recognition
+        if (isListening) {
+          recognitionInstance.start();
         }
       };
   
@@ -86,13 +96,13 @@ export default function SimpleVoiceAssistant() {
         setIsListening(false);
       };
   
-      setRecognition(recognitionInstance); // Set the recognition instance in state
+      setRecognition(recognitionInstance);
       return recognitionInstance;
     }
     
     setError('Speech recognition is not supported in this browser.');
     return null;
-  }, []);
+  }, [isListening]); //
 
   useEffect(() => {
     initializeMicrophone();
@@ -103,7 +113,7 @@ export default function SimpleVoiceAssistant() {
     
     setError(null);
     setIsListening(true);
-    setCurrentTranscript('');
+    setCurrentTranscript(''); // Reset the transcript when starting
     
     try {
       recognition.start();
