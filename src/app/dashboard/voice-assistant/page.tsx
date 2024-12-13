@@ -51,7 +51,7 @@ export default function SimpleVoiceAssistant() {
       });
   
       if (permission.state === 'granted') {
-        setupRecognition(); // This will now set the recognition instance in state
+        setupRecognition();
       }
     } catch (err) {
       console.error('Error checking microphone permission:', err);
@@ -65,28 +65,18 @@ export default function SimpleVoiceAssistant() {
     
     if (SpeechRecognition) {
       const recognitionInstance = new SpeechRecognition();
-      recognitionInstance.continuous = false; // Change this to false
+      recognitionInstance.continuous = true;
       recognitionInstance.interimResults = true;
       
-      let fullTranscript = ''; // Keep track of the full transcript
-  
       recognitionInstance.onresult = (event: any) => {
         const current = event.resultIndex;
         const transcript = event.results[current][0].transcript;
+        const isFinal = event.results[current].isFinal;
         
-        // Append the new transcript to the full transcript
-        fullTranscript = fullTranscript + ' ' + transcript;
-        setCurrentTranscript(fullTranscript.trim());
+        setCurrentTranscript(transcript);
         
-        if (event.results[current].isFinal) {
-          console.log('Final transcript:', fullTranscript);
-        }
-      };
-  
-      recognitionInstance.onend = () => {
-        // If still listening (button still pressed), restart recognition
-        if (isListening) {
-          recognitionInstance.start();
+        if (isFinal) {
+          console.log('Final transcript:', transcript);
         }
       };
   
@@ -102,7 +92,7 @@ export default function SimpleVoiceAssistant() {
     
     setError('Speech recognition is not supported in this browser.');
     return null;
-  }, [isListening]); //
+  }, []);
 
   useEffect(() => {
     initializeMicrophone();
@@ -195,7 +185,7 @@ export default function SimpleVoiceAssistant() {
     const requestPermission = async () => {
       try {
         await navigator.mediaDevices.getUserMedia({ audio: true });
-        const recognitionInstance = setupRecognition(); // Set up recognition after getting permission
+        setupRecognition();
         setMicPermission('granted');
       } catch (err) {
         console.error('Error requesting microphone permission:', err);
