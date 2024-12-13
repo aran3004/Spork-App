@@ -37,6 +37,27 @@ export default function SimpleVoiceAssistant() {
   const [nutritionData, setNutritionData] = useState<NutritionData | null>(null);
   const [showIngredients, setShowIngredients] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState('');
+  const [micPermission, setMicPermission] = useState<PermissionState>('prompt');
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  const initializeMicrophone = async () => {
+    try {
+      const permission = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+      setMicPermission(permission.state);
+      setIsInitializing(false);
+  
+      permission.addEventListener('change', () => {
+        setMicPermission(permission.state);
+      });
+  
+      if (permission.state === 'granted') {
+        setupRecognition(); // This will now set the recognition instance in state
+      }
+    } catch (err) {
+      console.error('Error checking microphone permission:', err);
+      setIsInitializing(false);
+    }
+  };
 
   const setupRecognition = useCallback(() => {
     const windowWithSpeech = window as unknown as IWindow;
@@ -58,13 +79,14 @@ export default function SimpleVoiceAssistant() {
           console.log('Final transcript:', transcript);
         }
       };
-
+  
       recognitionInstance.onerror = (event: any) => {
         console.error('Speech recognition error:', event);
         setError(event.error);
         setIsListening(false);
       };
-
+  
+      setRecognition(recognitionInstance); // Set the recognition instance in state
       return recognitionInstance;
     }
     
@@ -73,15 +95,8 @@ export default function SimpleVoiceAssistant() {
   }, []);
 
   useEffect(() => {
-    const recognitionInstance = setupRecognition();
-    setRecognition(recognitionInstance);
-    
-    return () => {
-      if (recognitionInstance) {
-        recognitionInstance.abort();
-      }
-    };
-  }, [setupRecognition]);
+    initializeMicrophone();
+  }, []);
 
   const startListening = () => {
     if (!recognition) return;
@@ -122,7 +137,7 @@ export default function SimpleVoiceAssistant() {
     try {
       const payload = {
         mealDescription: text,
-        isEditing: nutritionData !== null, // If we have nutrition data, we're editing
+        isEditing: nutritionData !== null,
         originalMeal: nutritionData !== null ? transcript : undefined
       };
 
@@ -166,6 +181,41 @@ export default function SimpleVoiceAssistant() {
     console.log('Getting suggestions for:', { transcript, nutritionData });
   };
 
+  const MicrophonePermissionRequest = () => {
+    const requestPermission = async () => {
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        const recognitionInstance = setupRecognition(); // Set up recognition after getting permission
+        setMicPermission('granted');
+      } catch (err) {
+        console.error('Error requesting microphone permission:', err);
+        setMicPermission('denied');
+      }
+    };
+  
+    return (
+      <div className="flex flex-col items-center gap-4">
+        <Button
+          onClick={requestPermission}
+          size="lg"
+          className="rounded-full w-16 h-16 bg-blue-500 active:bg-blue-600 transition-all duration-300"
+        >
+          <Mic className="h-6 w-6" />
+        </Button>
+        
+        {micPermission === 'denied' ? (
+          <p className="text-red-500 text-sm text-center max-w-xs">
+            Microphone access is blocked. Please enable it in your browser settings to use voice input.
+          </p>
+        ) : (
+          <p className="text-gray-700 text-sm text-center">
+            Click to enable microphone
+          </p>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="container mx-auto px-2 py-4">
       <Card className="bg-white shadow-lg">
@@ -173,68 +223,79 @@ export default function SimpleVoiceAssistant() {
           <div className="flex flex-col gap-4">
             {/* Voice Input Section */}
             <div className="flex flex-col items-center gap-4 pb-6 border-b pt-6">
-              <div className="relative">
-                {isListening && (
-                  <>
-                    <div className="absolute inset-0 rounded-full animate-ping bg-red-400 opacity-75" />
-                    <div className="absolute -inset-4 rounded-full animate-pulse bg-red-200 opacity-30" />
-                    <div className="absolute -inset-8 rounded-full animate-pulse bg-red-100 opacity-20" />
-                  </>
-                )}
-                <Button
-                  onPointerDown={startListening}
-                  onPointerUp={stopListening}
-                  onPointerLeave={stopListening}
-                  onContextMenu={(e) => e.preventDefault()}
-                  size="lg"
-                  className={`relative rounded-full w-16 h-16 transition-all duration-300 touch-none select-none ${
-                    isListening 
-                      ? 'bg-red-500 hover:bg-red-600 scale-110' 
-                      : 'bg-blue-500 hover:bg-blue-600'
-                  }`}
-                  disabled={isProcessing}
-                  style={{ touchAction: 'none' }}
-                >
-                  {isListening ? (
-                    <MicOff className="h-6 w-6 animate-pulse" />
-                  ) : (
-                    <Mic className="h-6 w-6" />
-                  )}
-                </Button>
-              </div>
-              
-              <div className="flex flex-col items-center gap-1">
-                <p className={`text-base font-medium flex items-center gap-2 text-center transition-colors ${
-                  isListening ? 'text-red-500' : 'text-gray-700'
-                }`}>
-                  {isListening 
-                    ? '🎙️ Recording...' 
-                    : nutritionData 
-                      ? 'Press and hold to modify meal'
-                      : 'Press and hold to log meal'
-                  }
-                </p>
-                {isListening && currentTranscript && (
-                  <p className="text-sm text-gray-600 max-w-md text-center">
-                    {currentTranscript}
-                  </p>
-                )}
-                {isProcessing && (
-                  <span className="flex items-center gap-1 text-blue-500">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Processing...
-                  </span>
-                )}
-              </div>
+              {micPermission !== 'granted' ? (
+                <MicrophonePermissionRequest />
+              ) : (
+                <>
+                  <div className="relative">
+                    {isListening && (
+                      <>
+                        <div className="absolute inset-0 rounded-full animate-ping bg-red-400 opacity-75" />
+                        <div className="absolute -inset-4 rounded-full animate-pulse bg-red-200 opacity-30" />
+                        <div className="absolute -inset-8 rounded-full animate-pulse bg-red-100 opacity-20" />
+                      </>
+                    )}
+                    <Button
+                      onPointerDown={startListening}
+                      onPointerUp={stopListening}
+                      onPointerLeave={stopListening}
+                      onContextMenu={(e) => e.preventDefault()}
+                      size="lg"
+                      className={`relative rounded-full w-16 h-16 transition-all duration-300 touch-none select-none active:scale-95 ${
+                        isListening 
+                          ? 'bg-red-500 active:bg-red-600 scale-110' 
+                          : 'bg-blue-500 active:bg-blue-600'
+                      }`}
+                      disabled={isProcessing}
+                      style={{ 
+                        touchAction: 'none',
+                        WebkitTapHighlightColor: 'transparent',
+                        WebkitTouchCallout: 'none',
+                        userSelect: 'none'
+                      }}
+                    >
+                      {isListening ? (
+                        <MicOff className="h-6 w-6 animate-pulse" />
+                      ) : (
+                        <Mic className="h-6 w-6" />
+                      )}
+                    </Button>
+                  </div>
+                  
+                  <div className="flex flex-col items-center gap-1">
+                    <p className={`text-base font-medium flex items-center gap-2 text-center transition-colors ${
+                      isListening ? 'text-red-500' : 'text-gray-700'
+                    }`}>
+                      {isListening 
+                        ? '🎙️ Recording...' 
+                        : nutritionData 
+                          ? 'Press and hold to modify meal'
+                          : 'Press and hold to log meal'
+                      }
+                    </p>
+                    {isListening && currentTranscript && (
+                      <p className="text-sm text-gray-600 max-w-md text-center">
+                        {currentTranscript}
+                      </p>
+                    )}
+                    {isProcessing && (
+                      <span className="flex items-center gap-1 text-blue-500">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Processing...
+                      </span>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
-
+  
             {/* Error Display */}
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg p-2 text-sm">
                 {error}
               </div>
             )}
-
+  
             {/* Nutrition Data Display */}
             {nutritionData && (
               <div className="space-y-4">
@@ -250,7 +311,7 @@ export default function SimpleVoiceAssistant() {
                     <PieChart className="h-6 w-6 text-blue-500" />
                   </div>
                 </div>
-
+  
                 {/* Compact Macros Display */}
                 <div className="grid grid-cols-4 gap-2 text-center">
                   {[
@@ -265,7 +326,7 @@ export default function SimpleVoiceAssistant() {
                     </div>
                   ))}
                 </div>
-
+  
                 {/* Collapsible Ingredients Table */}
                 <div className="border rounded-lg">
                   <Button
@@ -311,8 +372,7 @@ export default function SimpleVoiceAssistant() {
                     </div>
                   )}
                 </div>
-
-                {/* Simple action buttons */}
+  
                 {/* Action buttons */}
                 <div className="flex flex-col sm:flex-row gap-2">
                   <button 
@@ -339,6 +399,185 @@ export default function SimpleVoiceAssistant() {
     </div>
   );
 }
+
+//   return (
+//     <div className="container mx-auto px-2 py-4">
+//       <Card className="bg-white shadow-lg">
+//         <CardContent className="p-3">
+//           <div className="flex flex-col gap-4">
+//             {/* Voice Input Section */}
+//             <div className="flex flex-col items-center gap-4 pb-6 border-b pt-6">
+//               <div className="relative">
+//                 {isListening && (
+//                   <>
+//                     <div className="absolute inset-0 rounded-full animate-ping bg-red-400 opacity-75" />
+//                     <div className="absolute -inset-4 rounded-full animate-pulse bg-red-200 opacity-30" />
+//                     <div className="absolute -inset-8 rounded-full animate-pulse bg-red-100 opacity-20" />
+//                   </>
+//                 )}
+//                 <Button
+//                     onPointerDown={startListening}
+//                     onPointerUp={stopListening}
+//                     onPointerLeave={stopListening}
+//                     onContextMenu={(e) => e.preventDefault()}
+//                     size="lg"
+//                     className={`relative rounded-full w-16 h-16 transition-all duration-300 touch-none select-none active:scale-95 ${
+//                       isListening 
+//                         ? 'bg-red-500 active:bg-red-600 scale-110' 
+//                         : 'bg-blue-500 active:bg-blue-600'
+//                     }`}
+//                     disabled={isProcessing}
+//                     style={{ 
+//                       touchAction: 'none',
+//                       WebkitTapHighlightColor: 'transparent', // This removes the tap highlight on iOS
+//                       WebkitTouchCallout: 'none', // This prevents the callout menu
+//                       userSelect: 'none' // Additional prevention of selection
+//                     }}
+//                   >
+//                   {isListening ? (
+//                     <MicOff className="h-6 w-6 animate-pulse" />
+//                   ) : (
+//                     <Mic className="h-6 w-6" />
+//                   )}
+//                 </Button>
+//               </div>
+              
+//               <div className="flex flex-col items-center gap-1">
+//                 <p className={`text-base font-medium flex items-center gap-2 text-center transition-colors ${
+//                   isListening ? 'text-red-500' : 'text-gray-700'
+//                 }`}>
+//                   {isListening 
+//                     ? '🎙️ Recording...' 
+//                     : nutritionData 
+//                       ? 'Press and hold to modify meal'
+//                       : 'Press and hold to log meal'
+//                   }
+//                 </p>
+//                 {isListening && currentTranscript && (
+//                   <p className="text-sm text-gray-600 max-w-md text-center">
+//                     {currentTranscript}
+//                   </p>
+//                 )}
+//                 {isProcessing && (
+//                   <span className="flex items-center gap-1 text-blue-500">
+//                     <Loader2 className="h-4 w-4 animate-spin" />
+//                     Processing...
+//                   </span>
+//                 )}
+//               </div>
+//             </div>
+
+//             {/* Error Display */}
+//             {error && (
+//               <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg p-2 text-sm">
+//                 {error}
+//               </div>
+//             )}
+
+//             {/* Nutrition Data Display */}
+//             {nutritionData && (
+//               <div className="space-y-4">
+//                 {/* Calories Card */}
+//                 <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4">
+//                   <div className="flex items-center justify-between">
+//                     <div>
+//                       <p className="text-sm font-medium text-blue-800">Total Calories</p>
+//                       <h2 className="text-3xl font-bold text-blue-900">
+//                         {nutritionData.total_calories}
+//                       </h2>
+//                     </div>
+//                     <PieChart className="h-6 w-6 text-blue-500" />
+//                   </div>
+//                 </div>
+
+//                 {/* Compact Macros Display */}
+//                 <div className="grid grid-cols-4 gap-2 text-center">
+//                   {[
+//                     { label: 'Protein', value: nutritionData.protein_content, color: 'bg-green-100' },
+//                     { label: 'Carbs', value: nutritionData.carbohydrate_content, color: 'bg-blue-100' },
+//                     { label: 'Fat', value: nutritionData.fat_content, color: 'bg-yellow-100' },
+//                     { label: 'Fiber', value: nutritionData.fiber_content, color: 'bg-purple-100' }
+//                   ].map((macro, index) => (
+//                     <div key={index} className={`${macro.color} p-2 rounded-lg`}>
+//                       <p className="text-xs font-medium">{macro.label}</p>
+//                       <p className="text-sm font-bold">{macro.value}g</p>
+//                     </div>
+//                   ))}
+//                 </div>
+
+//                 {/* Collapsible Ingredients Table */}
+//                 <div className="border rounded-lg">
+//                   <Button
+//                     variant="ghost"
+//                     className="w-full flex justify-between items-center p-3"
+//                     onClick={() => setShowIngredients(!showIngredients)}
+//                   >
+//                     <span className="font-medium">Ingredients</span>
+//                     {showIngredients ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+//                   </Button>
+                  
+//                   {showIngredients && (
+//                     <div className="p-2">
+//                       <div className="overflow-x-auto">
+//                         <table className="w-full text-sm">
+//                           <thead className="border-b">
+//                             <tr>
+//                               <th className="text-left p-2">Item</th>
+//                               <th className="text-right p-2">Cal</th>
+//                               <th className="text-right p-2">P</th>
+//                               <th className="text-right p-2">C</th>
+//                               <th className="text-right p-2">F</th>
+//                             </tr>
+//                           </thead>
+//                           <tbody>
+//                             {nutritionData.ingredients.map((ingredient, index) => (
+//                               <tr key={index} className="border-b last:border-0">
+//                                 <td className="p-2">
+//                                   <span className="font-medium">{ingredient.ingredient}</span>
+//                                   <span className="text-xs text-gray-500 ml-2">
+//                                     {ingredient.weight}
+//                                   </span>
+//                                 </td>
+//                                 <td className="text-right p-2">{ingredient.calories}</td>
+//                                 <td className="text-right p-2">{ingredient.protein}</td>
+//                                 <td className="text-right p-2">{ingredient.carbohydrates}</td>
+//                                 <td className="text-right p-2">{ingredient.fat}</td>
+//                               </tr>
+//                             ))}
+//                           </tbody>
+//                         </table>
+//                       </div>
+//                     </div>
+//                   )}
+//                 </div>
+
+//                 {/* Simple action buttons */}
+//                 {/* Action buttons */}
+//                 <div className="flex flex-col sm:flex-row gap-2">
+//                   <button 
+//                     onClick={handleSuggestions}
+//                     className="flex items-center justify-center w-full gap-2 px-3 sm:px-4 py-2.5 bg-gradient-to-br from-blue-50 to-blue-100 text-blue-800 border border-blue-200 rounded-lg hover:from-blue-100 hover:to-blue-150 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm md:text-base font-medium"
+//                   >
+//                     <Lightbulb className="h-4 w-4 sm:mr-1" />
+//                     <span className="sm:inline">Get Suggestions</span>
+//                   </button>
+                  
+//                   <button 
+//                     onClick={handleSave}
+//                     className="flex items-center justify-center w-full gap-2 px-3 sm:px-4 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-all text-sm md:text-base font-medium"
+//                   >
+//                     <Save className="h-4 w-4 sm:mr-1" />
+//                     <span className="sm:inline">Save Meal</span>
+//                   </button>
+//                 </div>
+//               </div>
+//             )}
+//           </div>
+//         </CardContent>
+//       </Card>
+//     </div>
+//   );
+// }
 
 // 'use client';
 
