@@ -185,13 +185,15 @@ export default function SimpleVoiceAssistant() {
                   onPointerDown={startListening}
                   onPointerUp={stopListening}
                   onPointerLeave={stopListening}
+                  onContextMenu={(e) => e.preventDefault()}
                   size="lg"
-                  className={`relative rounded-full w-16 h-16 transition-all duration-300 touch-none ${
+                  className={`relative rounded-full w-16 h-16 transition-all duration-300 touch-none select-none ${
                     isListening 
                       ? 'bg-red-500 hover:bg-red-600 scale-110' 
                       : 'bg-blue-500 hover:bg-blue-600'
                   }`}
                   disabled={isProcessing}
+                  style={{ touchAction: 'none' }}
                 >
                   {isListening ? (
                     <MicOff className="h-6 w-6 animate-pulse" />
