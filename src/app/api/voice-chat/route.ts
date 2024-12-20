@@ -37,7 +37,7 @@ User Preferences:
 - Dietary Restrictions: ${userPreferences.dietary_restrictions?.join(', ') || 'None specified'}
 - Health Focus Areas: ${userPreferences.health_focus?.join(', ') || 'None specified'}
 - Meal Preferences: ${userPreferences.meal_preferences?.join(', ') || 'None specified'}
-- Additional Information: ${userPreferences.custom_notes || 'None specified'}
+- Additional Information (including health conditions and food preferences predifiened to the system): ${userPreferences.custom_notes || 'None specified'}
 `;
 };
 

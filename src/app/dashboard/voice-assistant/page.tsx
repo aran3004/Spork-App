@@ -83,7 +83,6 @@ export default function SimpleVoiceAssistant() {
         .select('primary_goals, dietary_restrictions, health_focus, meal_preferences, custom_notes')
         .eq('user_id', user.id)
         .single();
-
       if (!preferencesError && preferencesData) {
         setUserPreferences(preferencesData);
       }
