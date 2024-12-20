@@ -18,6 +18,7 @@ interface UserPreferences {
   dietary_restrictions: string[];
   health_focus: string[];
   meal_preferences: string[];
+  custom_notes: string;
 }
 
 interface Ingredient {
@@ -79,7 +80,7 @@ export default function SimpleVoiceAssistant() {
 
       const { data: preferencesData, error: preferencesError } = await supabase
         .from('user_preferences')
-        .select('primary_goals, dietary_restrictions, health_focus, meal_preferences')
+        .select('primary_goals, dietary_restrictions, health_focus, meal_preferences, custom_notes')
         .eq('user_id', user.id)
         .single();
 
@@ -227,6 +228,7 @@ export default function SimpleVoiceAssistant() {
           dietary_restrictions: userPreferences.dietary_restrictions,
           health_focus: userPreferences.health_focus,
           meal_preferences: userPreferences.meal_preferences,
+          custom_notes: userPreferences.custom_notes
         } : undefined
       };
 

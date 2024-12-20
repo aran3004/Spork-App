@@ -37,6 +37,7 @@ User Preferences:
 - Dietary Restrictions: ${userPreferences.dietary_restrictions?.join(', ') || 'None specified'}
 - Health Focus Areas: ${userPreferences.health_focus?.join(', ') || 'None specified'}
 - Meal Preferences: ${userPreferences.meal_preferences?.join(', ') || 'None specified'}
+- Additional Information: ${userPreferences.custom_notes || 'None specified'}
 `;
 };
 
@@ -246,7 +247,7 @@ export async function POST(request: Request) {
     // Create different prompts based on whether we're editing or creating new
     const userPrompt = isEditing 
       ? `User Context:\n${preferencesPrompt}\n\nOriginal meal: ${originalMeal}\n\nRequested changes: ${cleanDescription}\n\nPlease modify the meal according to these changes and provide the updated nutritional analysis, taking into account the user's preferences and restrictions.`
-      : `User Context:\n${preferencesPrompt}\n\nAnalyze this meal and provide a JSON response with nutritional information, considering the user's preferences and restrictions: ${cleanDescription}`;
+      : `User Context:\n${preferencesPrompt}\n\nAnalyze this meal and provide a JSON response with nutritional information, considering the user's preferences and restrictions and other information provided: ${cleanDescription}`;
 
     const completion = await openai.chat.completions.create({
       messages: [

@@ -1,9 +1,10 @@
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { User, Target, List, Utensils, Heart, Settings } from 'lucide-react';
+import { User, Target, List, Utensils, Heart, Settings, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { PreferencesCollection } from '@/components/PreferencesCollection';
@@ -13,6 +14,7 @@ interface UserPreferences {
   dietary_restrictions: string[];
   health_focus: string[];
   meal_preferences: string[];
+  custom_notes: string;
 }
 
 export default function ProfilePage() {
@@ -28,7 +30,7 @@ export default function ProfilePage() {
       
       const { data: preferencesData, error } = await supabase
         .from('user_preferences')
-        .select('primary_goals, dietary_restrictions, health_focus, meal_preferences')
+        .select('primary_goals, dietary_restrictions, health_focus, meal_preferences, custom_notes')
         .eq('user_id', user.id)
         .single();
 
@@ -103,34 +105,6 @@ export default function ProfilePage() {
       </div>
       
       <div className="grid gap-6">
-        {/* Health Goals Card */}
-        {/* <Card>
-          <CardHeader>
-            <CardTitle className="text-xl flex items-center gap-2">
-              <Scale className="h-5 w-5 text-green-500" />
-              Health Goals
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid sm:grid-cols-2 gap-6">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-sm text-gray-500 mb-1">Current Weight</p>
-              <p className="text-2xl font-semibold">
-                {user?.user_metadata?.current_weight 
-                  ? `${user.user_metadata.current_weight} kg` 
-                  : 'Not set'}
-              </p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-sm text-gray-500 mb-1">Target Weight</p>
-              <p className="text-2xl font-semibold">
-                {user?.user_metadata?.target_weight 
-                  ? `${user.user_metadata.target_weight} kg` 
-                  : 'Not set'}
-              </p>
-            </div>
-          </CardContent>
-        </Card> */}
-
         {/* Preferences Section with Improved Styling */}
         <Card>
           <CardHeader className="border-b">
@@ -152,7 +126,7 @@ export default function ProfilePage() {
             </div>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               {/* Primary Goals Card */}
               <div className="rounded-xl border border-blue-100 bg-gradient-to-b from-blue-50 to-transparent p-4">
                 <div className="flex items-center gap-2 mb-4">
@@ -232,6 +206,21 @@ export default function ProfilePage() {
                   ))}
                 </div>
               </div>
+
+              {/* Custom Notes Section */}
+              {preferences?.custom_notes && (
+                <div className="rounded-xl border border-amber-100 bg-gradient-to-b from-amber-50 to-transparent p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="bg-amber-500 rounded-full p-2 shadow-sm">
+                      <FileText className="h-4 w-4 text-white" />
+                    </div>
+                    <h3 className="font-medium text-amber-900">Additional Information</h3>
+                  </div>
+                  <div className="bg-white border border-amber-100 rounded-lg p-4 text-sm shadow-sm">
+                    {preferences.custom_notes}
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -239,6 +228,36 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+
+{/* Health Goals Card */}
+        {/* <Card>
+          <CardHeader>
+            <CardTitle className="text-xl flex items-center gap-2">
+              <Scale className="h-5 w-5 text-green-500" />
+              Health Goals
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid sm:grid-cols-2 gap-6">
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-sm text-gray-500 mb-1">Current Weight</p>
+              <p className="text-2xl font-semibold">
+                {user?.user_metadata?.current_weight 
+                  ? `${user.user_metadata.current_weight} kg` 
+                  : 'Not set'}
+              </p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-sm text-gray-500 mb-1">Target Weight</p>
+              <p className="text-2xl font-semibold">
+                {user?.user_metadata?.target_weight 
+                  ? `${user.user_metadata.target_weight} kg` 
+                  : 'Not set'}
+              </p>
+            </div>
+          </CardContent>
+        </Card> */}
+
 // 'use client';
 
 // import React from 'react';

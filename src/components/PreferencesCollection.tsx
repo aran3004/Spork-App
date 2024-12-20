@@ -95,7 +95,7 @@ export function PreferencesCollection({ onComplete }: PreferencesCollectionProps
       title: "Any additional health conditions or preferences?",
       field: "customNotes",
       type: 'text',
-      description: "Please share any specific health conditions, allergies, or preferences that weren't covered above (e.g., diabetes, skin conditions, food sensitivities)"
+      description: "Please share any specific health conditions, allergies, or preferences that weren't covered above (e.g., diabetes, skin conditions, food sensitivities, foods you dislike)"
     }
   ];
 
