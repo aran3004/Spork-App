@@ -1,8 +1,115 @@
-// /app/api/voice-chat/route.ts
-
 import OpenAI from 'openai';
-
 export const runtime = 'edge';
+
+// Types for nutrition data
+interface Ingredient {
+  ingredient: string;
+  weight: string;
+  calories: number;
+  protein: number;
+  carbohydrates: number;
+  fat: number;
+}
+
+interface NutritionAnalysis {
+  carbohydrate_content: number;
+  fat_content: number;
+  fiber_content: number;
+  protein_content: number;
+  total_calories: number;
+  health_score: number;  // Added health score
+  health_notes: string[];  // Added health notes for feedback
+  ingredients: Ingredient[];
+}
+
+// Utility functions for validation
+const extractGrams = (weight: string): number => {
+  const match = weight.match(/(\d+)g/);
+  return match ? parseInt(match[1], 10) : 0;
+};
+
+const validateIngredient = (ingredient: Ingredient): { isValid: boolean; errors: string[] } => {
+  const errors: string[] = [];
+  const grams = extractGrams(ingredient.weight);
+
+  // Check for negative or zero values
+  if (ingredient.calories < 0) errors.push(`Negative calories for ${ingredient.ingredient}`);
+  if (ingredient.protein < 0) errors.push(`Negative protein for ${ingredient.ingredient}`);
+  if (ingredient.carbohydrates < 0) errors.push(`Negative carbs for ${ingredient.ingredient}`);
+  if (ingredient.fat < 0) errors.push(`Negative fat for ${ingredient.ingredient}`);
+
+  // Check if calories make sense based on macros
+  const calculatedCalories = (
+    ingredient.protein * 4 +
+    ingredient.carbohydrates * 4 +
+    ingredient.fat * 9
+  );
+
+  // Allow for some rounding differences (±5 calories)
+  if (Math.abs(calculatedCalories - ingredient.calories) > 5) {
+    errors.push(
+      `Calorie mismatch for ${ingredient.ingredient}: ` +
+      `reported ${ingredient.calories} vs calculated ${calculatedCalories.toFixed(1)}`
+    );
+  }
+
+  // Check if weight makes sense
+  if (grams > 0 && ingredient.calories > 0) {
+    const caloriesPerGram = ingredient.calories / grams;
+    if (caloriesPerGram > 9) { // Pure fat has 9 calories per gram, shouldn't exceed this
+      errors.push(`Unrealistic calories per gram for ${ingredient.ingredient}: ${caloriesPerGram.toFixed(1)}`);
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
+const validateAndRecalculateNutrition = (analysis: NutritionAnalysis): {
+  isValid: boolean;
+  errors: string[];
+  correctedAnalysis: NutritionAnalysis;
+} => {
+  const errors: string[] = [];
+  
+  // Validate each ingredient
+  analysis.ingredients.forEach(ingredient => {
+    const validation = validateIngredient(ingredient);
+    errors.push(...validation.errors);
+  });
+
+  // Recalculate totals from ingredients
+  const calculatedTotals = {
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0
+  };
+
+  analysis.ingredients.forEach(ingredient => {
+    calculatedTotals.calories += Math.max(0, ingredient.calories);
+    calculatedTotals.protein += Math.max(0, ingredient.protein);
+    calculatedTotals.carbs += Math.max(0, ingredient.carbohydrates);
+    calculatedTotals.fat += Math.max(0, ingredient.fat);
+  });
+
+  // Create corrected analysis
+  const correctedAnalysis: NutritionAnalysis = {
+    ...analysis,
+    total_calories: Math.round(calculatedTotals.calories),
+    protein_content: Number(calculatedTotals.protein.toFixed(1)),
+    carbohydrate_content: Number(calculatedTotals.carbs.toFixed(1)),
+    fat_content: Number(calculatedTotals.fat.toFixed(1))
+  };
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    correctedAnalysis
+  };
+};
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY ?? '',
@@ -11,7 +118,6 @@ const openai = new OpenAI({
 });
 
 const SYSTEM_PROMPT = `You are a nutrition analysis assistant that can both analyze new meals and modify existing meal analyses based on user requests.
-
 When handling MODIFICATIONS to an existing meal:
 1. Listen carefully to the requested changes (e.g., "change flour to 50g", "add mayo", "remove sugar")
 2. Update the nutritional values accordingly
@@ -25,6 +131,21 @@ Your response must always be a valid JSON object matching this exact structure:
   "fiber_content": 3,
   "protein_content": 25,
   "total_calories": 350,
+  "health_score": 75,
+  "potential_score": 85,
+  "health_notes": [
+    "Good protein content",
+    "Could use more fiber",
+    "Well-balanced fats"
+  ],
+  "improvements": [
+    {
+      "title": "Add More Fiber",
+      "description": "Include whole grains or vegetables to boost fiber content",
+      "priority": "HIGH",
+      "impact": 5
+    }
+  ],
   "ingredients": [
     {
       "ingredient": "Plain Flour",
@@ -37,18 +158,61 @@ Your response must always be a valid JSON object matching this exact structure:
   ]
 }
 
+Consider these factors when analyzing and suggesting improvements:
+1. Current health score (0-100) based on:
+   - Nutritional balance
+   - Portion size
+   - Ingredient quality
+   - Preparation method
+   - Alignment with modern nutritional science
+
+2. Improvement suggestions (only if current score < 80):
+   - Prioritize evidence-based improvements
+   - Focus on processed ingredients
+   - Address missing essential nutrients
+   - Consider portion imbalances
+   - Evaluate preparation methods
+   - Each improvement should include estimated score impact
+
+3. Potential score calculation:
+   - Calculate potential score by adding improvement impacts
+   - Cap total improvements at 3
+   - Ensure potential score doesn't exceed 95
+   - If current score >= 80, return empty improvements array
+
+Consider recent research insights such as:
+- Chrono-nutrition and meal timing's impact on metabolism
+- The importance of food synergies and bioavailability
+- Current understanding of the gut microbiome's role in nutrition
+- Modern perspectives on macro and micronutrient balance
+- Latest research on anti-inflammatory foods and oxidative stress
+- Current guidelines on sustainable and plant-forward eating
+- Updated understanding of processed food categories and their health impacts
+- Recent findings on nutrient density and bioactive compounds
+
+Key Analysis Guidelines:
+- Be very selective with high scores (90+ should be rare and truly exceptional)
+- Use the full range of the 0-100 scale, including decimal points for precision
+- Consider both established nutritional principles and emerging research
+- Be especially critical of ultra-processed foods and poor nutritional balance
+- Factor in recent research on preparation methods and nutrient preservation
+
 Rules for JSON response:
 1. Include exact measurements in grams
 2. Use realistic nutritional values based on standard food databases
 3. Include all macro nutrients for each ingredient
 4. Ensure all numbers are realistic and properly calculated
 5. Keep ingredient descriptions clear and concise and capitalise to make neater
-6. When modifying meals, maintain consistency with unmodified ingredients`;
+6. When modifying meals, maintain consistency with unmodified ingredients
+7. Calories or Macronutrients cannot be negative
+8. Health score must be between 0-100
+9. Only include improvements if current score < 80
+10. Each improvement must include an "impact" number indicating score increase`;
 
 export async function POST(request: Request) {
   try {
     const { mealDescription, isEditing, originalMeal } = await request.json();
-
+    
     if (!mealDescription) {
       return new Response(
         JSON.stringify({ error: 'No meal description provided' }),
@@ -88,13 +252,19 @@ export async function POST(request: Request) {
     }
 
     try {
-      const nutritionData = JSON.parse(nutritionAnalysis);
+      const nutritionData = JSON.parse(nutritionAnalysis) as NutritionAnalysis;
+      const validation = validateAndRecalculateNutrition(nutritionData);
+      
+      if (!validation.isValid) {
+        console.warn('Nutrition validation errors:', validation.errors);
+      }
       
       return new Response(
         JSON.stringify({
           description: cleanDescription,
-          nutrition: nutritionData,
-          wasEdited: isEditing
+          nutrition: validation.correctedAnalysis,
+          wasEdited: isEditing,
+          validationErrors: validation.errors
         }),
         { 
           status: 200, 
@@ -105,7 +275,6 @@ export async function POST(request: Request) {
       console.error('JSON Parse Error:', parseError);
       throw new Error('Failed to parse nutrition data');
     }
-
   } catch (error) {
     console.error('API Error:', error);
     
@@ -127,6 +296,8 @@ export async function POST(request: Request) {
     );
   }
 }
+// // /app/api/voice-chat/route.ts
+
 // import OpenAI from 'openai';
 
 // export const runtime = 'edge';
@@ -137,9 +308,15 @@ export async function POST(request: Request) {
 //   maxRetries: 3,
 // });
 
-// const SYSTEM_PROMPT = `You are a nutrition analysis assistant. Analyze the meal description and respond with a JSON object containing ingredients and nutritional information.
+// const SYSTEM_PROMPT = `You are a nutrition analysis assistant that can both analyze new meals and modify existing meal analyses based on user requests.
 
-// Your response must be a valid JSON object matching this exact structure:
+// When handling MODIFICATIONS to an existing meal:
+// 1. Listen carefully to the requested changes (e.g., "change flour to 50g", "add mayo", "remove sugar")
+// 2. Update the nutritional values accordingly
+// 3. Keep all unchanged ingredients the same
+// 4. Return the complete modified meal analysis
+
+// Your response must always be a valid JSON object matching this exact structure:
 // {
 //   "carbohydrate_content": 45,
 //   "fat_content": 12,
@@ -163,11 +340,12 @@ export async function POST(request: Request) {
 // 2. Use realistic nutritional values based on standard food databases
 // 3. Include all macro nutrients for each ingredient
 // 4. Ensure all numbers are realistic and properly calculated
-// 5. Keep ingredient descriptions clear and concise and capitalise to make`;
+// 5. Keep ingredient descriptions clear and concise and capitalise to make neater
+// 6. When modifying meals, maintain consistency with unmodified ingredients`;
 
 // export async function POST(request: Request) {
 //   try {
-//     const { mealDescription } = await request.json();
+//     const { mealDescription, isEditing, originalMeal } = await request.json();
 
 //     if (!mealDescription) {
 //       return new Response(
@@ -176,8 +354,13 @@ export async function POST(request: Request) {
 //       );
 //     }
 
-//     // Clean up the meal description
+//     // Clean up the descriptions
 //     const cleanDescription = mealDescription.trim().replace(/\n/g, ' ');
+    
+//     // Create different prompts based on whether we're editing or creating new
+//     const userPrompt = isEditing 
+//       ? `Original meal: ${originalMeal}\n\nRequested changes: ${cleanDescription}\n\nPlease modify the meal according to these changes and provide the updated nutritional analysis.`
+//       : `Analyze this meal and provide a JSON response with nutritional information: ${cleanDescription}`;
 
 //     const completion = await openai.chat.completions.create({
 //       messages: [
@@ -187,7 +370,7 @@ export async function POST(request: Request) {
 //         },
 //         { 
 //           role: "user", 
-//           content: `Analyze this meal and provide a JSON response with nutritional information: ${cleanDescription}`
+//           content: userPrompt
 //         }
 //       ],
 //       model: "gpt-4-turbo-preview",
@@ -208,7 +391,8 @@ export async function POST(request: Request) {
 //       return new Response(
 //         JSON.stringify({
 //           description: cleanDescription,
-//           nutrition: nutritionData
+//           nutrition: nutritionData,
+//           wasEdited: isEditing
 //         }),
 //         { 
 //           status: 200, 
@@ -238,160 +422,6 @@ export async function POST(request: Request) {
 //         status: 500, 
 //         headers: { 'Content-Type': 'application/json' } 
 //       }
-//     );
-//   }
-// }
-
-
-
-
-
-
-
-
-// import OpenAI from 'openai';
-
-// export const runtime = 'edge';
-
-// const openai = new OpenAI({
-//   apiKey: process.env.OPENAI_API_KEY ?? '',
-//   timeout: 15000,
-//   maxRetries: 3,
-// });
-
-// const VOICE_SYSTEM_PROMPT = `You are a helpful voice assistant called Spork, a nutrition and meal tracking app. Your responses should be concise and conversational while maintaining nutritional expertise.
-
-// Key Capabilities:
-// 1. Meal Logging:
-//    - When a user wants to log a meal, gather necessary details and format them for analysis
-//    - Extract meal name and description from natural conversation
-//    - Ask for clarification if details are unclear
-
-// 2. Nutritional Information:
-//    - Provide quick, accurate nutritional insights
-//    - Use the latest 2024 nutritional research when giving advice
-//    - Consider user's dietary preferences and restrictions
-
-// 3. Conversation Flow:
-//    - Keep responses brief and natural (max 2-3 sentences)
-//    - Ask follow-up questions when needed
-//    - Confirm actions before processing
-
-// If a user wants to log a meal, format their input for the meal analysis system. For other queries, provide direct, conversational responses.
-
-// Remember user context and preferences throughout the conversation. If you don't have specific user preferences, you can ask for them.`;
-
-// interface Message {
-//   role: 'user' | 'system' | 'assistant';
-//   content: string;
-// }
-
-// interface RequestBody {
-//   messages: Message[];
-//   userPreferences?: {
-//     primary_goals?: string[];
-//     dietary_restrictions?: string[];
-//     health_focus?: string[];
-//     meal_preferences?: string[];
-//   };
-// }
-
-// export async function POST(request: Request) {
-//   try {
-//     const body = await request.json() as RequestBody;
-//     const { messages, userPreferences } = body;
-
-//     if (!messages || messages.length === 0) {
-//       return new Response(
-//         JSON.stringify({ error: 'No messages provided' }),
-//         { status: 400, headers: { 'Content-Type': 'application/json' } }
-//       );
-//     }
-
-//     const lastMessage = messages[messages.length - 1].content.toLowerCase();
-//     const isLoggingMeal = lastMessage.includes('log meal') || 
-//                          lastMessage.includes('track meal') ||
-//                          lastMessage.includes('record meal');
-
-//     if (isLoggingMeal) {
-//       const completion = await openai.chat.completions.create({
-//         messages: [
-//           { role: "system", content: "Extract meal name and description from the user's input. Respond in JSON format: {\"mealName\": \"string\", \"mealDescription\": \"string\"}" },
-//           { role: "user", content: lastMessage }
-//         ],
-//         model: "gpt-4-turbo-preview",
-//         response_format: { type: "json_object" },
-//         temperature: 0.3,
-//         max_tokens: 500,
-//       });
-
-//       const mealContent = completion.choices[0]?.message?.content;
-      
-//       if (!mealContent) {
-//         throw new Error('No meal content generated');
-//       }
-
-//       const mealData = JSON.parse(mealContent);
-      
-//       // Call the meal analysis endpoint
-//       const analysisResponse = await fetch(new URL('/api/analyse-meal', request.url), {
-//         method: 'POST',
-//         headers: { 'Content-Type': 'application/json' },
-//         body: JSON.stringify({
-//           ...mealData,
-//           userPreferences
-//         }),
-//       });
-
-//       if (!analysisResponse.ok) {
-//         throw new Error('Meal analysis failed');
-//       }
-
-//       const analysis = await analysisResponse.json();
-      
-//       return new Response(
-//         JSON.stringify({
-//           response: `I've analyzed your meal. Health score: ${analysis.score}. ${analysis.improvements[0].description}. Would you like to hear more details?`,
-//           analysis
-//         }),
-//         { status: 200, headers: { 'Content-Type': 'application/json' } }
-//       );
-//     }
-
-//     // Regular conversational response
-//     const completion = await openai.chat.completions.create({
-//       messages: [
-//         { role: "system", content: VOICE_SYSTEM_PROMPT },
-//         ...messages
-//       ],
-//       model: "gpt-4-turbo-preview",
-//       temperature: 0.7,
-//       max_tokens: 200,
-//     });
-
-//     const responseContent = completion.choices[0]?.message?.content;
-
-//     if (!responseContent) {
-//       throw new Error('No response generated');
-//     }
-
-//     return new Response(
-//       JSON.stringify({ response: responseContent }),
-//       { status: 200, headers: { 'Content-Type': 'application/json' } }
-//     );
-
-//   } catch (error) {
-//     console.error('API Error:', error);
-    
-//     const errorResponse = {
-//       error: 'Internal Server Error',
-//       message: error instanceof Error ? error.message : 'An unexpected error occurred',
-//       requestId: crypto.randomUUID()
-//     };
-
-//     return new Response(
-//       JSON.stringify(errorResponse), 
-//       { status: 500, headers: { 'Content-Type': 'application/json' } }
 //     );
 //   }
 // }

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Mic, MicOff, Loader2, PieChart, ChevronDown, ChevronUp, Lightbulb, Save } from 'lucide-react';
+import { Mic, MicOff, Loader2, PieChart, ChevronDown, ChevronUp, Lightbulb, Save, CheckCircle, X } from 'lucide-react';
 
 interface IWindow extends Window {
   webkitSpeechRecognition: any;
@@ -19,12 +19,23 @@ interface Ingredient {
   fat: number;
 }
 
+interface Improvement {
+  title: string;
+  description: string;
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+  impact: number;
+}
+
 interface NutritionData {
   carbohydrate_content: number;
   fat_content: number;
   fiber_content: number;
   protein_content: number;
   total_calories: number;
+  health_score: number;
+  potential_score: number;
+  health_notes: string[];
+  improvements: Improvement[];
   ingredients: Ingredient[];
 }
 
@@ -40,6 +51,7 @@ export default function SimpleVoiceAssistant() {
   const [finalTranscripts, setFinalTranscripts] = useState<string[]>([]);
   const [micPermission, setMicPermission] = useState<PermissionState>('prompt');
   const [isInitializing, setIsInitializing] = useState(true);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const initializeMicrophone = async () => {
     try {
@@ -197,7 +209,9 @@ export default function SimpleVoiceAssistant() {
   };
   
   const handleSuggestions = () => {
-    console.log('Getting suggestions for:', { transcript, nutritionData });
+    if (nutritionData?.improvements) {
+      setShowSuggestions(!showSuggestions);
+    }
   };
 
   const MicrophonePermissionRequest = () => {
@@ -232,6 +246,61 @@ export default function SimpleVoiceAssistant() {
           </p>
         )}
       </div>
+    );
+  };
+
+  const ImprovementsList: React.FC<{ 
+    improvements: Improvement[];
+    onClose: () => void;
+  }> = ({ improvements, onClose }) => {
+    const getPriorityStyles = (priority: string) => {
+      switch (priority) {
+        case 'HIGH':
+          return 'bg-red-50 border-red-200 text-red-700';
+        case 'MEDIUM':
+          return 'bg-yellow-50 border-yellow-200 text-yellow-700';
+        case 'LOW':
+          return 'bg-green-50 border-green-200 text-green-700';
+        default:
+          return 'bg-gray-50 border-gray-200 text-gray-700';
+      }
+    };
+  
+    return (
+      <Card className="mt-4">
+      <CardContent className="p-3 sm:p-6">
+        <div className="flex items-center justify-between mb-3 sm:mb-4 pt-2 sm:pt-4">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900">Suggested Improvements</h3>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="space-y-3 sm:space-y-4">
+          {improvements.map((improvement, index) => (
+            <div 
+              key={index} 
+              className={`p-2 sm:p-4 rounded-lg border ${getPriorityStyles(improvement.priority)}`}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm sm:text-base font-medium">{improvement.title}</h4>
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full border ${
+                        getPriorityStyles(improvement.priority)
+                      }`}>
+                        {improvement.priority}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs sm:text-sm mt-1">{improvement.description}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
     );
   };
 
@@ -315,22 +384,63 @@ export default function SimpleVoiceAssistant() {
               </div>
             )}
   
-            {/* Nutrition Data Display */}
             {nutritionData && (
               <div className="space-y-4">
-                {/* Calories Card */}
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-blue-800">Total Calories</p>
+                {/* Cards Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Calories Card */}
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-sm font-medium text-blue-800">Total Calories</p>
+                        <PieChart className="h-4 w-4 text-blue-500 hidden sm:block" />
+                      </div>
                       <h2 className="text-3xl font-bold text-blue-900">
                         {nutritionData.total_calories}
                       </h2>
                     </div>
-                    <PieChart className="h-6 w-6 text-blue-500" />
                   </div>
-                </div>
-  
+
+                  {/* Health Score Card */}
+                  <div className={`bg-gradient-to-br rounded-xl p-4 ${
+                    nutritionData.health_score >= 80 
+                      ? 'from-green-50 to-green-100' 
+                      : nutritionData.health_score >= 60 
+                        ? 'from-yellow-50 to-yellow-100'
+                        : 'from-red-50 to-red-100'
+                    }`}>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm font-medium text-gray-800">Health Score</p>
+                          {nutritionData.improvements?.length > 0 ? (
+                            <Lightbulb className={`h-4 w-4 hidden sm:block ${
+                              nutritionData.health_score >= 80 
+                                ? 'text-green-500' 
+                                : nutritionData.health_score >= 60 
+                                  ? 'text-yellow-500'
+                                  : 'text-red-500'
+                            }`} />
+                          ) : (
+                            <CheckCircle className="h-4 w-4 text-green-500 hidden sm:block" />
+                          )}
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                          <h2 className="text-3xl font-bold text-gray-900">
+                            {nutritionData.health_score}
+                          </h2>
+                          <span className="text-sm font-medium text-gray-600">
+                            / 100
+                          </span>
+                        </div>
+                        {nutritionData.improvements?.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            {nutritionData.improvements.length} suggestion{nutritionData.improvements.length !== 1 ? 's' : ''} available
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                 {/* Compact Macros Display */}
                 <div className="grid grid-cols-4 gap-2 text-center">
                   {[
@@ -345,44 +455,44 @@ export default function SimpleVoiceAssistant() {
                     </div>
                   ))}
                 </div>
-  
-                {/* Collapsible Ingredients Table */}
+
+                {/* Rest of the component... */}
                 <div className="border rounded-lg">
                   <Button
                     variant="ghost"
-                    className="w-full flex justify-between items-center p-3"
+                    className="w-full flex justify-between items-center p-2 sm:p-3"
                     onClick={() => setShowIngredients(!showIngredients)}
                   >
-                    <span className="font-medium">Ingredients</span>
+                    <span className="font-medium text-sm sm:text-base">Ingredients</span>
                     {showIngredients ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </Button>
                   
                   {showIngredients && (
-                    <div className="p-2">
+                    <div className="p-1 sm:p-2">
                       <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                        <table className="w-full text-[11px] sm:text-sm">
                           <thead className="border-b">
                             <tr>
-                              <th className="text-left p-2">Item</th>
-                              <th className="text-right p-2">Cal</th>
-                              <th className="text-right p-2">P</th>
-                              <th className="text-right p-2">C</th>
-                              <th className="text-right p-2">F</th>
+                              <th className="text-left p-1 sm:p-2">Item</th>
+                              <th className="text-right p-1 sm:p-2">Cal</th>
+                              <th className="text-right p-1 sm:p-2">P</th>
+                              <th className="text-right p-1 sm:p-2">C</th>
+                              <th className="text-right p-1 sm:p-2">F</th>
                             </tr>
                           </thead>
                           <tbody>
                             {nutritionData.ingredients.map((ingredient, index) => (
                               <tr key={index} className="border-b last:border-0">
-                                <td className="p-2">
+                                <td className="p-1 sm:p-2">
                                   <span className="font-medium">{ingredient.ingredient}</span>
-                                  <span className="text-xs text-gray-500 ml-2">
+                                  <span className="text-[10px] sm:text-xs text-gray-500 ml-1 sm:ml-2">
                                     {ingredient.weight}
                                   </span>
                                 </td>
-                                <td className="text-right p-2">{ingredient.calories}</td>
-                                <td className="text-right p-2">{ingredient.protein}</td>
-                                <td className="text-right p-2">{ingredient.carbohydrates}</td>
-                                <td className="text-right p-2">{ingredient.fat}</td>
+                                <td className="text-right p-1 sm:p-2">{ingredient.calories}</td>
+                                <td className="text-right p-1 sm:p-2">{ingredient.protein}</td>
+                                <td className="text-right p-1 sm:p-2">{ingredient.carbohydrates}</td>
+                                <td className="text-right p-1 sm:p-2">{ingredient.fat}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -391,16 +501,27 @@ export default function SimpleVoiceAssistant() {
                     </div>
                   )}
                 </div>
-  
+
+                {showSuggestions && nutritionData.improvements && (
+                  <ImprovementsList 
+                    improvements={nutritionData.improvements} 
+                    onClose={() => setShowSuggestions(false)} 
+                  />
+                )}
+
                 {/* Action buttons */}
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <button 
-                    onClick={handleSuggestions}
-                    className="flex items-center justify-center w-full gap-2 px-3 sm:px-4 py-2.5 bg-gradient-to-br from-blue-50 to-blue-100 text-blue-800 border border-blue-200 rounded-lg hover:from-blue-100 hover:to-blue-150 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm md:text-base font-medium"
-                  >
-                    <Lightbulb className="h-4 w-4 sm:mr-1" />
-                    <span className="sm:inline">Get Suggestions</span>
-                  </button>
+                  {nutritionData.improvements?.length > 0 && (
+                    <button 
+                      onClick={handleSuggestions}
+                      className="flex items-center justify-center w-full gap-2 px-3 sm:px-4 py-2.5 bg-gradient-to-br from-blue-50 to-blue-100 text-blue-800 border border-blue-200 rounded-lg hover:from-blue-100 hover:to-blue-150 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm md:text-base font-medium"
+                    >
+                      <Lightbulb className="h-4 w-4 sm:mr-1" />
+                      <span className="sm:inline">
+                        {showSuggestions ? 'Hide Suggestions' : 'Show Suggestions'}
+                      </span>
+                    </button>
+                  )}
                   
                   <button 
                     onClick={handleSave}

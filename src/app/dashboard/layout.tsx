@@ -19,9 +19,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-gray-50">
       {/* Desktop Sidebar */}
       <nav className="hidden md:block w-64 bg-white h-[calc(100vh-64px)] shadow-sm fixed top-16">
-        <div className="p-4">
+        {/* <div className="p-4">
           <h1 className="text-2xl font-bold text-blue-500">Nosh</h1>
-        </div>
+        </div> */}
         
         <div className="mt-8">
           {navItems.map((item) => {
