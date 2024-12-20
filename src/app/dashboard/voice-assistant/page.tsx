@@ -4,10 +4,20 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Mic, MicOff, Loader2, PieChart, ChevronDown, ChevronUp, Lightbulb, Save, CheckCircle, X } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { User } from '@supabase/supabase-js';
+import { useRouter } from 'next/navigation';
 
 interface IWindow extends Window {
   webkitSpeechRecognition: any;
   SpeechRecognition: any;
+}
+
+interface UserPreferences {
+  primary_goals: string[];
+  dietary_restrictions: string[];
+  health_focus: string[];
+  meal_preferences: string[];
 }
 
 interface Ingredient {
@@ -52,6 +62,48 @@ export default function SimpleVoiceAssistant() {
   const [micPermission, setMicPermission] = useState<PermissionState>('prompt');
   const [isInitializing, setIsInitializing] = useState(true);
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const [user, setUser] = useState<User | null>(null);
+  const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
+
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkUserAndPreferences = async () => {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user) {
+        router.push('/auth/signin');
+        return;
+      }
+      setUser(user);
+
+      const { data: preferencesData, error: preferencesError } = await supabase
+        .from('user_preferences')
+        .select('primary_goals, dietary_restrictions, health_focus, meal_preferences')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!preferencesError && preferencesData) {
+        setUserPreferences(preferencesData);
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        router.push('/auth/signin');
+      }
+      setUser(session?.user || null);
+      if (session?.user) {
+        checkUserAndPreferences();
+      }
+    });
+
+    checkUserAndPreferences();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [router]);
 
   const initializeMicrophone = async () => {
     try {
@@ -169,7 +221,13 @@ export default function SimpleVoiceAssistant() {
       const payload = {
         mealDescription: text,
         isEditing: nutritionData !== null,
-        originalMeal: nutritionData !== null ? transcript : undefined
+        originalMeal: nutritionData !== null ? transcript : undefined,
+        userPreferences: userPreferences ? {
+          primary_goals: userPreferences.primary_goals,
+          dietary_restrictions: userPreferences.dietary_restrictions,
+          health_focus: userPreferences.health_focus,
+          meal_preferences: userPreferences.meal_preferences,
+        } : undefined
       };
 
       const response = await fetch('/api/voice-chat', {

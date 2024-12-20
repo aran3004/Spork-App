@@ -28,6 +28,18 @@ const extractGrams = (weight: string): number => {
   return match ? parseInt(match[1], 10) : 0;
 };
 
+const generateUserPreferencesPrompt = (userPreferences: any) => {
+  if (!userPreferences) return 'No specific user preferences provided.';
+  
+  return `
+User Preferences:
+- Primary Goals: ${userPreferences.primary_goals?.join(', ') || 'None specified'}
+- Dietary Restrictions: ${userPreferences.dietary_restrictions?.join(', ') || 'None specified'}
+- Health Focus Areas: ${userPreferences.health_focus?.join(', ') || 'None specified'}
+- Meal Preferences: ${userPreferences.meal_preferences?.join(', ') || 'None specified'}
+`;
+};
+
 const validateIngredient = (ingredient: Ingredient): { isValid: boolean; errors: string[] } => {
   const errors: string[] = [];
   const grams = extractGrams(ingredient.weight);
@@ -117,7 +129,10 @@ const openai = new OpenAI({
   maxRetries: 3,
 });
 
-const SYSTEM_PROMPT = `You are a nutrition analysis assistant that can both analyze new meals and modify existing meal analyses based on user requests.
+const SYSTEM_PROMPT = `You are a critical, but encouraging, professional nutrition analysis assistant that can both analyze new meals and modify existing meal analyses based on user requests. 
+You are also specialized in detailed yet concise meal analysis who stays current with the latest 2024/2025 nutritional research and guidelines. 
+Your role is to provide precise, evidence-based analysis incorporating contemporary understanding of nutrition science and encourage your users to adopt change
+
 When handling MODIFICATIONS to an existing meal:
 1. Listen carefully to the requested changes (e.g., "change flour to 50g", "add mayo", "remove sugar")
 2. Update the nutritional values accordingly
@@ -174,12 +189,6 @@ Consider these factors when analyzing and suggesting improvements:
    - Evaluate preparation methods
    - Each improvement should include estimated score impact
 
-3. Potential score calculation:
-   - Calculate potential score by adding improvement impacts
-   - Cap total improvements at 3
-   - Ensure potential score doesn't exceed 95
-   - If current score >= 80, return empty improvements array
-
 Consider recent research insights such as:
 - Chrono-nutrition and meal timing's impact on metabolism
 - The importance of food synergies and bioavailability
@@ -205,13 +214,21 @@ Rules for JSON response:
 5. Keep ingredient descriptions clear and concise and capitalise to make neater
 6. When modifying meals, maintain consistency with unmodified ingredients
 7. Calories or Macronutrients cannot be negative
-8. Health score must be between 0-100
-9. Only include improvements if current score < 80
-10. Each improvement must include an "impact" number indicating score increase`;
+8. Health score must be between 0-100 and can take any integer in this range`;
+
+
+// 3. Potential score calculation:
+//    - Calculate potential score by adding improvement impacts
+//    - Cap total improvements at 3
+//    - Ensure potential score doesn't exceed 95
+//    - If current score >= 80, return empty improvements array
+// 9. Only include improvements if current score < 80
+// 10. Each improvement must include an "impact" number indicating score increase
+
 
 export async function POST(request: Request) {
   try {
-    const { mealDescription, isEditing, originalMeal } = await request.json();
+    const { mealDescription, isEditing, originalMeal , userPreferences} = await request.json();
     
     if (!mealDescription) {
       return new Response(
@@ -222,11 +239,14 @@ export async function POST(request: Request) {
 
     // Clean up the descriptions
     const cleanDescription = mealDescription.trim().replace(/\n/g, ' ');
+
+    // Generate the preferences prompt
+    const preferencesPrompt = generateUserPreferencesPrompt(userPreferences);
     
     // Create different prompts based on whether we're editing or creating new
     const userPrompt = isEditing 
-      ? `Original meal: ${originalMeal}\n\nRequested changes: ${cleanDescription}\n\nPlease modify the meal according to these changes and provide the updated nutritional analysis.`
-      : `Analyze this meal and provide a JSON response with nutritional information: ${cleanDescription}`;
+      ? `User Context:\n${preferencesPrompt}\n\nOriginal meal: ${originalMeal}\n\nRequested changes: ${cleanDescription}\n\nPlease modify the meal according to these changes and provide the updated nutritional analysis, taking into account the user's preferences and restrictions.`
+      : `User Context:\n${preferencesPrompt}\n\nAnalyze this meal and provide a JSON response with nutritional information, considering the user's preferences and restrictions: ${cleanDescription}`;
 
     const completion = await openai.chat.completions.create({
       messages: [
@@ -264,7 +284,8 @@ export async function POST(request: Request) {
           description: cleanDescription,
           nutrition: validation.correctedAnalysis,
           wasEdited: isEditing,
-          validationErrors: validation.errors
+          validationErrors: validation.errors,
+          userPreferencesApplied: !!userPreferences
         }),
         { 
           status: 200, 
